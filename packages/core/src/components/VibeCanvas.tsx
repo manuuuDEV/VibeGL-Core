@@ -596,6 +596,10 @@ export function VibeCanvas({
     deepMerge(DEFAULT_VIBE_CONFIG, config) as Required<VibeConfig>
   );
   
+  // SSR Hydration Check
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+
   // WebGPU / WebGL detection
   const [hasWebGL, setHasWebGL] = useState(true);
   const [useWebGPU, setUseWebGPU] = useState(false);
@@ -649,6 +653,16 @@ export function VibeCanvas({
     }
   }, []);
   
+  if (!isMounted) {
+    return (
+      <div className={className} style={{ ...style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#fff', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Graceful degradation: WebGPU -> WebGL2 -> CSS 3D
   if (!hasWebGL && !useWebGPU) {
     return (
       <div 
@@ -656,9 +670,30 @@ export function VibeCanvas({
         style={{ ...style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         {fallback || (
-          <div style={{ padding: 20, textAlign: 'center', background: '#1a1a1a', color: '#fff', borderRadius: 8 }}>
-            <h2>WebGL/WebGPU Not Supported</h2>
-            <p>Please update your browser or enable hardware acceleration.</p>
+          <div style={{ perspective: '1000px', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a' }}>
+            <div style={{ 
+              width: 100, height: 100, position: 'relative', transformStyle: 'preserve-3d', animation: 'rotate3d 5s linear infinite' 
+            }}>
+              <style>{`
+                @keyframes rotate3d { from { transform: rotateX(0deg) rotateY(0deg); } to { transform: rotateX(360deg) rotateY(360deg); } }
+                .css3d-face { position: absolute; width: 100%; height: 100%; border: 2px solid #0ff; background: rgba(0, 255, 255, 0.1); box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff; }
+                .css3d-front  { transform: translateZ(50px); }
+                .css3d-back   { transform: rotateY(180deg) translateZ(50px); }
+                .css3d-right  { transform: rotateY(90deg) translateZ(50px); }
+                .css3d-left   { transform: rotateY(-90deg) translateZ(50px); }
+                .css3d-top    { transform: rotateX(90deg) translateZ(50px); }
+                .css3d-bottom { transform: rotateX(-90deg) translateZ(50px); }
+              `}</style>
+              <div className="css3d-face css3d-front"></div>
+              <div className="css3d-face css3d-back"></div>
+              <div className="css3d-face css3d-right"></div>
+              <div className="css3d-face css3d-left"></div>
+              <div className="css3d-face css3d-top"></div>
+              <div className="css3d-face css3d-bottom"></div>
+            </div>
+            <div style={{ position: 'absolute', bottom: 20, color: '#0ff', fontFamily: 'monospace', textShadow: '0 0 5px #0ff', whiteSpace: 'nowrap', left: '50%', transform: 'translateX(-50%)' }}>
+              WebGPU/WebGL Failed - Rendering CSS 3D Fallback
+            </div>
           </div>
         )}
       </div>
