@@ -206,7 +206,7 @@ export class PredictivePhysics {
   private createWorker(): Worker {
     const workerCode = `
       // Inlined worker code for self-contained deployment
-      // In production, this would be loaded from a separate file
+      // 100% Lock-Free Atomics Ring Buffer Rewrite
       const FRAME_BUFFER_COUNT = 4;
       const MAX_BODIES = 10000;
       const BODY_STRIDE = 13;
@@ -235,82 +235,63 @@ export class PredictivePhysics {
           amax: new Float32Array(buf, (offset + 3 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES * 3),
           active: new Int32Array(buf, (offset + 4 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES),
           meta: i32,
+          metaF32: f32,
         };
         
         Atomics.store(views.meta, META.WRITE_INDEX, 0);
         Atomics.store(views.meta, META.READ_INDEX, 0);
         Atomics.store(views.meta, META.BODY_COUNT, 0);
-        views.meta[3] = 1/60;
-        views.meta[4] = 0; views.meta[5] = -9.81; views.meta[6] = 0;
-        Atomics.store(views.meta, META.LOCK, 0);
+        views.metaF32[META.TIME_STEP/4] = 1/60;
+        views.metaF32[META.GRAVITY_X/4] = 0; 
+        views.metaF32[META.GRAVITY_Y/4] = -9.81; 
+        views.metaF32[META.GRAVITY_Z/4] = 0;
         Atomics.store(views.meta, META.VERSION, 1);
         
         postMessage({ type: 'READY' });
       }
       
-      function lock() {
-        return Atomics.compareExchange(views.meta, META.LOCK, 0, 1) === 0;
-      }
-      
-      function unlock() {
-        Atomics.store(views.meta, META.LOCK, 0);
-        Atomics.notify(views.meta, META.LOCK, 1);
-      }
-      
+      // True Lock-Free Simulate
       function simulate() {
-        if (!views || !lock()) return;
-        try {
-          const count = Atomics.load(views.meta, META.BODY_COUNT);
-          const dt = views.meta[3];
-          const gx = views.meta[4], gy = views.meta[5], gz = views.meta[6];
-          const wi = Atomics.load(views.meta, META.WRITE_INDEX);
-          const nwi = (wi + 1) % FRAME_BUFFER_COUNT;
+        if (!views) return;
+        
+        const count = Atomics.load(views.meta, META.BODY_COUNT);
+        const dt = views.metaF32[META.TIME_STEP/4];
+        const gx = views.metaF32[META.GRAVITY_X/4], gy = views.metaF32[META.GRAVITY_Y/4], gz = views.metaF32[META.GRAVITY_Z/4];
+        
+        const wi = Atomics.load(views.meta, META.WRITE_INDEX);
+        const nwi = (wi + 1) % FRAME_BUFFER_COUNT;
+        
+        // Zero object allocation loop
+        for (let i = 0; i < count; i++) {
+          if (views.active[wi * MAX_BODIES + i] === 0) continue;
           
-          const tmp = new Float32Array(13);
+          const base = wi * MAX_BODIES * 3 + i * 3;
+          let px = views.pos[base], py = views.pos[base+1], pz = views.pos[base+2];
+          let vx = views.vel[base], vy = views.vel[base+1], vz = views.vel[base+2];
+          const hx = (views.amax[base] - views.amin[base]) / 2;
+          const hy = (views.amax[base+1] - views.amin[base+1]) / 2;
+          const hz = (views.amax[base+2] - views.amin[base+2]) / 2;
           
-          for (let i = 0; i < count; i++) {
-            if (views.active[wi * MAX_BODIES + i] === 0) continue;
-            
-            const base = wi * MAX_BODIES * 3 + i * 3;
-            tmp[0] = views.pos[base]; tmp[1] = views.pos[base+1]; tmp[2] = views.pos[base+2];
-            tmp[3] = views.vel[base]; tmp[4] = views.vel[base+1]; tmp[5] = views.vel[base+2];
-            tmp[6] = views.amin[base]; tmp[7] = views.amin[base+1]; tmp[8] = views.amin[base+2];
-            
-            let px = tmp[0], py = tmp[1], pz = tmp[2];
-            let vx = tmp[3], vy = tmp[4], vz = tmp[5];
-            const hx = tmp[6], hy = tmp[7], hz = tmp[8];
-            
-            for (let f = 0; f < FRAME_BUFFER_COUNT; f++) {
-              const tf = (wi + f) % FRAME_BUFFER_COUNT;
-              
-              vx += gx * dt; vy += gy * dt; vz += gz * dt;
-              const nx = px + vx * dt;
-              let ny = py + vy * dt;
-              const nz = pz + vz * dt;
-              
-              if (ny - hy < 0) { ny = hy; vy = -vy * 0.8; }
-              
-              const tbase = tf * MAX_BODIES * 3 + i * 3;
-              views.pos[tbase] = nx; views.pos[tbase+1] = ny; views.pos[tbase+2] = nz;
-              views.vel[tbase] = vx; views.vel[tbase+1] = vy; views.vel[tbase+2] = vz;
-              views.amin[tbase] = nx - hx; views.amin[tbase+1] = ny - hy; views.amin[tbase+2] = nz - hz;
-              views.amax[tbase] = nx + hx; views.amax[tbase+1] = ny + hy; views.amax[tbase+2] = nz + hz;
-              views.active[tf * MAX_BODIES + i] = 1;
-              
-              px = nx; py = ny; pz = nz;
-            }
-          }
+          vx += gx * dt; vy += gy * dt; vz += gz * dt;
+          const nx = px + vx * dt;
+          let ny = py + vy * dt;
+          const nz = pz + vz * dt;
           
-          Atomics.store(views.meta, META.WRITE_INDEX, nwi);
-          views.meta[7] = performance.now();
-          views.meta[9] = (views.meta[9] || 0) + dt * FRAME_BUFFER_COUNT;
-          Atomics.add(views.meta, META.VERSION, 1);
-          Atomics.notify(views.meta, META.WRITE_INDEX, 1);
+          if (ny - hy < 0) { ny = hy; vy = -vy * 0.8; }
           
-          postMessage({ type: 'FRAME_READY', frameIndex: nwi, bodyCount: count, timestamp: performance.now() });
-        } finally {
-          unlock();
+          const tbase = nwi * MAX_BODIES * 3 + i * 3;
+          views.pos[tbase] = nx; views.pos[tbase+1] = ny; views.pos[tbase+2] = nz;
+          views.vel[tbase] = vx; views.vel[tbase+1] = vy; views.vel[tbase+2] = vz;
+          views.amin[tbase] = nx - hx; views.amin[tbase+1] = ny - hy; views.amin[tbase+2] = nz - hz;
+          views.amax[tbase] = nx + hx; views.amax[tbase+1] = ny + hy; views.amax[tbase+2] = nz + hz;
+          views.active[nwi * MAX_BODIES + i] = 1;
         }
+        
+        Atomics.store(views.meta, META.WRITE_INDEX, nwi);
+        Atomics.add(views.meta, META.VERSION, 1);
+        Atomics.notify(views.meta, META.WRITE_INDEX, 1);
+        
+        postMessage({ type: 'FRAME_READY', frameIndex: nwi, bodyCount: count, timestamp: performance.now() });
       }
       
       function loop() {
@@ -327,11 +308,11 @@ export class PredictivePhysics {
               const { type, payload } = e.data;
               switch (type) {
                 case 'INIT': initSharedMemory(payload.buffer); break;
-                case 'ADD_BODY': if (views && lock()) { try { const c = Atomics.load(views.meta, META.BODY_COUNT); if (c < MAX_BODIES) { writeBody(0, c, payload); Atomics.store(views.meta, META.BODY_COUNT, c+1); postMessage({type:'BODY_ADDED',id:c}); } } finally { unlock(); } } break;
-                case 'REMOVE_BODY': if (views && lock()) { try { for(let f=0;f<FRAME_BUFFER_COUNT;f++) views.active[f*MAX_BODIES+payload.id]=0; postMessage({type:'BODY_REMOVED',id:payload.id}); } finally { unlock(); } } break;
-                case 'UPDATE_BODY': if (views && lock()) { try { writeBody(0, payload.id, payload); } finally { unlock(); } } break;
-                case 'SET_GRAVITY': if (views) { views.meta[4]=payload.x??0; views.meta[5]=payload.y??-9.81; views.meta[6]=payload.z??0; } break;
-                case 'SET_TIME_STEP': if (views) views.meta[3]=payload.timeStep; break;
+                case 'ADD_BODY': if (views) { const c = Atomics.load(views.meta, META.BODY_COUNT); if (c < MAX_BODIES) { writeBody(0, c, payload); Atomics.add(views.meta, META.BODY_COUNT, 1); postMessage({type:'BODY_ADDED',id:c}); } } break;
+                case 'REMOVE_BODY': if (views) { for(let f=0;f<FRAME_BUFFER_COUNT;f++) views.active[f*MAX_BODIES+payload.id]=0; postMessage({type:'BODY_REMOVED',id:payload.id}); } break;
+                case 'UPDATE_BODY': if (views) { writeBody(0, payload.id, payload); } break;
+                case 'SET_GRAVITY': if (views) { views.metaF32[META.GRAVITY_X/4]=payload.x??0; views.metaF32[META.GRAVITY_Y/4]=payload.y??-9.81; views.metaF32[META.GRAVITY_Z/4]=payload.z??0; } break;
+                case 'SET_TIME_STEP': if (views) views.metaF32[META.TIME_STEP/4]=payload.timeStep; break;
                 case 'START': if (!running) { running=true; lastTime=performance.now(); loop(); } break;
                 case 'STOP': running=false; if(timer) clearTimeout(timer); break;
               }
