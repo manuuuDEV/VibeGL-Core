@@ -7,27 +7,52 @@
  * Main thread simply consumes the pre-calculated Float32Array data.
  */
 
-import type { PhysicsBodyConfig } from "./worker/physics.worker";
-import { WorkerMessageType, MainMessageType, FRAME_BUFFER_COUNT, MAX_BODIES } from "./worker/physics.worker";
+// ============================================
+// TYPES (formerly from physics.worker.ts)
+// ============================================
+
+/** Physics body configuration for initialization */
+export interface PhysicsBodyConfig {
+  position: [number, number, number];
+  velocity?: [number, number, number];
+  acceleration?: [number, number, number];
+  mass?: number;
+  radius?: number;
+  static?: boolean;
+  id?: number; // Added by addBody method
+}
+
+/** Worker message types (for internal use) */
+enum WorkerMessageType {
+  INIT = 'INIT',
+  ADD_BODY = 'ADD_BODY',
+  REMOVE_BODY = 'REMOVE_BODY',
+  UPDATE_BODY = 'UPDATE_BODY',
+  SET_GRAVITY = 'SET_GRAVITY',
+  SET_TIME_STEP = 'SET_TIME_STEP',
+  START = 'START',
+  STOP = 'STOP',
+  RESET = 'RESET',
+}
+
+/** Main thread message types (for internal use) */
+enum MainMessageType {
+  READY = 'READY',
+  FRAME_READY = 'FRAME_READY',
+  BODY_ADDED = 'BODY_ADDED',
+  BODY_REMOVED = 'BODY_REMOVED',
+  ERROR = 'ERROR',
+}
+
+/** Number of frames to pre-calculate (current + 3 future) */
+export const FRAME_BUFFER_COUNT = 4;
+
+/** Maximum number of physics bodies supported */
+export const MAX_BODIES = 10000;
 
 // ============================================
 // TYPES
 // ============================================
-
-/** Physics body handle returned when adding a body */
-export interface PhysicsBodyHandle {
-  id: number;
-  index: number;
-}
-
-/** Current frame data for a single body */
-export interface BodyFrameData {
-  position: [number, number, number];
-  velocity: [number, number, number];
-  aabbMin: [number, number, number];
-  aabbMax: [number, number, number];
-  active: boolean;
-}
 
 /** All frame buffers for reading */
 export interface FrameBuffers {
@@ -52,6 +77,18 @@ export interface PhysicsMetadata {
 
 /** Prediction frame selector */
 export type PredictionFrame = 0 | 1 | 2 | 3; // 0=current, 1=next, 2=next+1, 3=next+2
+
+/** Opaque handle returned when adding a physics body */
+export type PhysicsBodyHandle = number;
+
+/** Single frame data for a physics body */
+export interface BodyFrameData {
+  position: [number, number, number];
+  velocity: [number, number, number];
+  aabbMin: [number, number, number];
+  aabbMax: [number, number, number];
+  active: boolean;
+}
 
 // ============================================
 // CONSTANTS
@@ -287,19 +324,18 @@ export class PredictivePhysics {
       }
       
       self.onmessage = (e) => {
-        const { type, payload } = e.data;
-        switch (type) {
-          case 'INIT': initSharedMemory(payload.buffer); break;
-          case 'ADD_BODY': if (views && lock()) { try { const c = Atomics.load(views.meta, META.BODY_COUNT); if (c < MAX_BODIES) { writeBody(0, c, payload); Atomics.store(views.meta, META.BODY_COUNT, c+1); postMessage({type:'BODY_ADDED',id:c}); } } finally { unlock(); } } break;
-          case 'REMOVE_BODY': if (views && lock()) { try { for(let f=0;f<FRAME_BUFFER_COUNT;f++) views.active[f*MAX_BODIES+payload.id]=0; postMessage({type:'BODY_REMOVED',id:payload.id}); } finally { unlock(); } } break;
-          case 'UPDATE_BODY': if (views && lock()) { try { writeBody(0, payload.id, payload); } finally { unlock(); } } break;
-          case 'SET_GRAVITY': if (views) { views.meta[4]=payload.x??0; views.meta[5]=payload.y??-9.81; views.meta[6]=payload.z??0; } break;
-          case 'SET_TIME_STEP': if (views) views.meta[3]=payload.timeStep; break;
-          case 'START': if (!running) { running=true; lastTime=performance.now(); loop(); } break;
-          case 'STOP': running=false; if(timer) clearTimeout(timer); break;
-          case 'RESET': if (views && lock()) { try { Atomics.store(views.meta,META.BODY_COUNT,0); Atomics.store(views.meta,META.WRITE_INDEX,0); Atomics.store(views.meta,META.READ_INDEX,0); views.active.fill(0); } finally { unlock(); } } break;
-        }
-      };
+              const { type, payload } = e.data;
+              switch (type) {
+                case 'INIT': initSharedMemory(payload.buffer); break;
+                case 'ADD_BODY': if (views && lock()) { try { const c = Atomics.load(views.meta, META.BODY_COUNT); if (c < MAX_BODIES) { writeBody(0, c, payload); Atomics.store(views.meta, META.BODY_COUNT, c+1); postMessage({type:'BODY_ADDED',id:c}); } } finally { unlock(); } } break;
+                case 'REMOVE_BODY': if (views && lock()) { try { for(let f=0;f<FRAME_BUFFER_COUNT;f++) views.active[f*MAX_BODIES+payload.id]=0; postMessage({type:'BODY_REMOVED',id:payload.id}); } finally { unlock(); } } break;
+                case 'UPDATE_BODY': if (views && lock()) { try { writeBody(0, payload.id, payload); } finally { unlock(); } } break;
+                case 'SET_GRAVITY': if (views) { views.meta[4]=payload.x??0; views.meta[5]=payload.y??-9.81; views.meta[6]=payload.z??0; } break;
+                case 'SET_TIME_STEP': if (views) views.meta[3]=payload.timeStep; break;
+                case 'START': if (!running) { running=true; lastTime=performance.now(); loop(); } break;
+                case 'STOP': running=false; if(timer) clearTimeout(timer); break;
+              }
+            };
       
       function writeBody(frame, idx, body) {
         const base = frame * MAX_BODIES * 3 + idx * 3;
@@ -328,7 +364,7 @@ export class PredictivePhysics {
           break;
           
         case MainMessageType.BODY_ADDED:
-          const handle: PhysicsBodyHandle = { id: payload.id, index: payload.id };
+              const handle: PhysicsBodyHandle = payload.id;
           this.bodyHandles.set(payload.id, handle);
           break;
           
@@ -357,7 +393,7 @@ export class PredictivePhysics {
       payload: bodyConfig
     });
     
-    return { id, index: id };
+      return id;
   }
 
   /**
@@ -368,10 +404,10 @@ export class PredictivePhysics {
     
     this.worker.postMessage({
       type: WorkerMessageType.REMOVE_BODY,
-      payload: { id: handle.id }
+        payload: { id: handle }
     });
     
-    this.bodyHandles.delete(handle.id);
+      this.bodyHandles.delete(handle);
   }
 
   /**
@@ -382,7 +418,7 @@ export class PredictivePhysics {
     
     this.worker.postMessage({
       type: WorkerMessageType.UPDATE_BODY,
-      payload: { id: handle.id, ...updates }
+        payload: { id: handle, ...updates }
     });
   }
 
@@ -456,7 +492,7 @@ export class PredictivePhysics {
     }
     
     const { positions, velocities, aabbMin, aabbMax, activeFlags } = this.frameBuffers;
-    const index = handle.index;
+      const index = handle;
     
     if (index >= MAX_BODIES) {
       throw new Error(`Body index ${index} exceeds maximum ${MAX_BODIES}`);
@@ -503,7 +539,7 @@ export class PredictivePhysics {
     }
     
     const { positions, velocities, aabbMin, aabbMax, activeFlags } = this.frameBuffers;
-    const index = handle.index;
+      const index = handle;
     const baseIdx = frame * MAX_BODIES * 3 + index * 3;
     const activeIdx = frame * MAX_BODIES + index;
     

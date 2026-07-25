@@ -7,5 +7,12 @@ export function createPhysicsWorker(): Worker {
     };
   `;
   const blob = new Blob([workerCode], { type: 'application/javascript' });
-  return new Worker(URL.createObjectURL(blob));
+  const workerUrl = URL.createObjectURL(blob);
+  const worker = new Worker(workerUrl);
+  
+  // Cleanup: revoke URL after worker is created to prevent memory leak
+  // The worker maintains a reference to the code, so revoking is safe
+  URL.revokeObjectURL(workerUrl);
+  
+  return worker;
 }
