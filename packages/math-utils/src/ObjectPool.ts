@@ -3,7 +3,7 @@ import * as THREE from "three";
 export class ObjectPool<T> {
   private pool: T[] = [];
   private factory: () => T;
-  private resetFunc?: (obj: T) => void;
+  private resetFunc: ((obj: T) => void) | undefined;
 
   constructor(factory: () => T, initialSize: number = 100, resetFunc?: (obj: T) => void) {
     this.factory = factory;
@@ -16,7 +16,7 @@ export class ObjectPool<T> {
   acquire(): T {
     const obj = this.pool.pop();
     if (obj) {
-      if (this.resetFunc) this.resetFunc(obj);
+      this.resetFunc?.(obj);
       return obj;
     }
     return this.factory();

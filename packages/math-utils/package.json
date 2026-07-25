@@ -1,15 +1,36 @@
 {
   "name": "@vibe-gl/math-utils",
   "version": "0.1.0",
-  "main": "src/index.ts",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./worker": {
+      "import": "./dist/worker/index.mjs",
+      "require": "./dist/worker/index.js",
+      "types": "./dist/worker/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "three": "^0.160.1"
   },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
   "devDependencies": {
+    "tsup": "^8.0.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
   }
