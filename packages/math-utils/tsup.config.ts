@@ -1,11 +1,17 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/worker/physics.worker.ts'],
+  entry: {
+    'index': 'src/index.ts',
+    'worker/index': 'src/worker/workerSetup.ts'
+  },
   format: ['esm', 'cjs', 'iife'],
   dts: {
     resolve: true,
-    entry: ['src/index.ts', 'src/worker/physics.worker.ts'],
+    entry: {
+      'index': 'src/index.ts',
+      'worker/index': 'src/worker/workerSetup.ts'
+    }
   },
   splitting: false,
   sourcemap: true,
