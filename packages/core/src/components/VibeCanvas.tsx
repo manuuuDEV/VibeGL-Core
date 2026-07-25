@@ -8,7 +8,9 @@ import React, {
 } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+// @ts-ignore
 import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
+// @ts-ignore
 import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { 
   Environment, 
@@ -149,11 +151,11 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
       // Set color based on config using nodes
       let colorNode;
       switch (color) {
-        case 'neon': colorNode = Nodes.color(0x00ffff); break;
-        case 'fire': colorNode = Nodes.color(0xff4400); break;
-        case 'water': colorNode = Nodes.color(0x00aaff); break;
-        case 'galaxy': colorNode = Nodes.color(0xaa00ff); break;
-        default: colorNode = Nodes.color(0xffffff);
+        case 'neon': colorNode = (Nodes as any).color(0x00ffff); break;
+        case 'fire': colorNode = (Nodes as any).color(0xff4400); break;
+        case 'water': colorNode = (Nodes as any).color(0x00aaff); break;
+        case 'galaxy': colorNode = (Nodes as any).color(0xaa00ff); break;
+        default: colorNode = (Nodes as any).color(0xffffff);
       }
       mat.colorNode = colorNode;
       return mat;
@@ -216,23 +218,23 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
     
     // Setup TSL Compute Node if available
-    if (isWebGPU && Nodes.storage) {
+    if (isWebGPU && (Nodes as any).storage) {
       try {
         const positionBuffer = new (Nodes as any).StorageInstancedBufferAttribute(geometry.attributes.position.array as Float32Array, 3);
         const velocityBuffer = new (Nodes as any).StorageInstancedBufferAttribute(geometry.attributes.velocity.array as Float32Array, 3);
         
-        const positionStorage = Nodes.storage(positionBuffer, 'vec3', count);
-        const velocityStorage = Nodes.storage(velocityBuffer, 'vec3', count);
+        const positionStorage = (Nodes as any).storage(positionBuffer, 'vec3', count);
+        const velocityStorage = (Nodes as any).storage(velocityBuffer, 'vec3', count);
         
         // Define Compute Node Logic
-        const computeLogic = Nodes.tslFn(() => {
-          const pos = positionStorage.element(Nodes.instanceIndex);
-          const vel = velocityStorage.element(Nodes.instanceIndex);
+        const computeLogic = (Nodes as any).tslFn(() => {
+          const pos = positionStorage.element((Nodes as any).instanceIndex);
+          const vel = velocityStorage.element((Nodes as any).instanceIndex);
           
           if (behavior === 'swarm') {
             // Simple swarm logic via nodes
-            const dist = Nodes.length(pos);
-            const force = Nodes.vec3(pos).div(dist).mul(0.1);
+            const dist = (Nodes as any).length(pos);
+            const force = (Nodes as any).vec3(pos).div(dist).mul(0.1);
             vel.subAssign(force);
           } else if (behavior === 'explode') {
              vel.mulAssign(1.01);
