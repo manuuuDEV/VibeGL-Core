@@ -9,6 +9,7 @@ import React, {
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
+import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { 
   Environment, 
   SoftShadows, 
@@ -27,108 +28,56 @@ extend(THREE);
 // TYPES - VIBE CODER API
 // ============================================
 
-/**
- * VibeCanvas Configuration Schema
- * Natural-language-like JSON configuration for AI-assisted coding
- */
 export interface VibeConfig {
-  /** Environment preset: 'studio' | 'cyberpunk-neon' | 'space' | 'nature' | 'minimal' | 'void' */
   environment?: 'studio' | 'cyberpunk-neon' | 'space' | 'nature' | 'minimal' | 'void';
-  
-  /** Physics preset: 'none' | 'low-gravity' | 'earth' | 'moon' | 'jupiter' | 'zero-g' | 'fluid' */
   physics?: 'none' | 'low-gravity' | 'earth' | 'moon' | 'jupiter' | 'zero-g' | 'fluid';
-  
-  /** Particle system configuration */
   particles?: {
-    /** Number of particles (auto-LOD adjusts based on performance) */
     count?: number;
-    /** Behavior: 'float' | 'swarm' | 'explode' | 'trail' | 'morph' | 'attract' */
     behavior?: 'float' | 'swarm' | 'explode' | 'trail' | 'morph' | 'attract';
-    /** Color theme */
     color?: 'white' | 'neon' | 'fire' | 'water' | 'galaxy' | 'custom';
-    /** Custom color array for 'custom' theme */
     customColors?: string[];
-    /** Size range [min, max] */
     size?: [number, number];
-    /** Lifetime in seconds */
     life?: number;
   };
-  
-  /** Post-processing effects */
   postProcessing?: {
-    /** Bloom intensity */
     bloom?: number;
-    /** Vignette intensity */
     vignette?: number;
-    /** Film grain intensity */
     grain?: number;
-    /** Chromatic aberration */
     chromaticAberration?: number;
-    /** Color grading LUT */
     lut?: string;
   };
-  
-  /** Camera configuration */
   camera?: {
-    /** Camera type */
     type?: 'perspective' | 'orthographic';
-    /** Position [x, y, z] */
     position?: [number, number, number];
-    /** Field of view (perspective) */
     fov?: number;
-    /** Near/far planes */
     near?: number;
     far?: number;
-    /** Enable camera controls */
     controls?: boolean;
-    /** Auto-rotate */
     autoRotate?: boolean;
-    /** Auto-rotate speed */
     autoRotateSpeed?: number;
   };
-  
-  /** Lighting configuration */
   lighting?: {
-    /** Preset: 'studio' | 'dramatic' | 'natural' | 'neon' | 'minimal' */
     preset?: 'studio' | 'dramatic' | 'natural' | 'neon' | 'minimal';
-    /** Ambient light intensity */
     ambientIntensity?: number;
-    /** Directional light intensity */
     directionalIntensity?: number;
-    /** Directional light position */
     directionalPosition?: [number, number, number];
-    /** Enable shadows */
     shadows?: boolean;
-    /** Shadow map resolution */
     shadowResolution?: number;
   };
-  
-  /** Performance settings */
   performance?: {
-    /** Target FPS (30, 60, 120) */
     targetFPS?: 30 | 60 | 120;
-    /** Enable auto-LOD */
     autoLOD?: boolean;
-    /** Enable frustum culling */
     frustumCulling?: boolean;
-    /** Max particle count */
     maxParticles?: number;
-    /** DPR range [min, max] */
     dpr?: [number, number];
   };
-  
-  /** Custom shader injection (for advanced vibe coders) */
   customShader?: {
-    /** Vertex shader GLSL */
     vertex?: string;
-    /** Fragment shader GLSL */
     fragment?: string;
-    /** Uniforms to pass to shader */
     uniforms?: Record<string, any>;
   };
 }
 
-/** Default configuration */
 const DEFAULT_VIBE_CONFIG: Required<VibeConfig> = {
   environment: 'studio',
   physics: 'earth',
@@ -169,7 +118,7 @@ const DEFAULT_VIBE_CONFIG: Required<VibeConfig> = {
     targetFPS: 60,
     autoLOD: true,
     frustumCulling: true,
-    maxParticles: 100000,
+    maxParticles: 1000000,
     dpr: [1, 2],
   },
   customShader: {
@@ -180,133 +129,70 @@ const DEFAULT_VIBE_CONFIG: Required<VibeConfig> = {
 };
 
 // ============================================
-// PRESET SHADERS & EFFECTS
-// ============================================
-
-interface PresetShader {
-  vertex: string;
-  fragment: string;
-  uniforms?: Record<string, unknown>;
-}
-
-/** Preset shaders for custom shader injection */
-export const PRESET_SHADERS: Record<string, PresetShader> = {
-  'cyberpunk-neon': {
-    vertex: `
-      varying vec2 vUv;
-      varying vec3 vNormal;
-      varying vec3 vWorldPosition;
-      void main() {
-        vUv = uv;
-        vNormal = normalize(normalMatrix * normal);
-        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragment: `
-      uniform float time;
-      uniform vec3 neonColor1;
-      uniform vec3 neonColor2;
-      uniform float scanlineIntensity;
-      varying vec2 vUv;
-      varying vec3 vNormal;
-      varying vec3 vWorldPosition;
-      
-      float rand(vec2 co) { return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453); }
-      
-      void main() {
-        vec3 color = mix(neonColor1, neonColor2, vUv.y);
-        float scanline = sin(vUv.y * 800.0 + time * 10.0) * scanlineIntensity;
-        float noise = rand(vUv * 100.0 + time) * 0.1;
-        float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0, 0, 1))), 3.0);
-        gl_FragColor = vec4(color + fresnel * 0.5 + scanline + noise, 1.0);
-      }
-    `,
-    uniforms: {
-      neonColor1: [1, 0, 1],
-      neonColor2: [0, 1, 1],
-      scanlineIntensity: 0.1,
-    }
-  },
-  'space': {
-    vertex: `
-      varying vec3 vNormal;
-      varying vec3 vWorldPosition;
-      void main() {
-        vNormal = normalize(normalMatrix * normal);
-        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragment: `
-      uniform float time;
-      uniform vec3 starColor;
-      varying vec3 vNormal;
-      varying vec3 vWorldPosition;
-      
-      float noise(vec3 p) {
-        vec3 i = floor(p);
-        vec3 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-        return mix(
-          mix(mix(dot(i + vec3(0,0,0), vec3(127.1, 311.7, 74.7)), 
-                  dot(i + vec3(1,0,0), vec3(127.1, 311.7, 74.7)), f.x),
-              mix(dot(i + vec3(0,1,0), vec3(127.1, 311.7, 74.7)), 
-                  dot(i + vec3(1,1,0), vec3(127.1, 311.7, 74.7)), f.x), f.y),
-          mix(mix(dot(i + vec3(0,0,1), vec3(127.1, 311.7, 74.7)), 
-                  dot(i + vec3(1,0,1), vec3(127.1, 311.7, 74.7)), f.x),
-              mix(dot(i + vec3(0,1,1), vec3(127.1, 311.7, 74.7)), 
-                  dot(i + vec3(1,1,1), vec3(127.1, 311.7, 74.7)), f.x), f.y), f.z);
-      }
-      
-      void main() {
-        float n = noise(vWorldPosition * 0.5 + time * 0.1);
-        vec3 color = mix(vec3(0.05, 0.05, 0.2), starColor, smoothstep(0.7, 1.0, n));
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `,
-    uniforms: {
-      starColor: [1, 1, 0.8],
-    }
-  },
-  };
-
-// ============================================
 // INTERNAL COMPONENTS
 // ============================================
 
-/** Particle system using GPU instancing */
-function VibeParticles({ config }: { config: Required<VibeConfig>['particles'] }) {
-  const { count = 1000, behavior = 'float', color = 'white', size = [0.05, 0.2], life = 5 } = config;
+/** Particle system using WebGPU Compute Shaders / TSL */
+function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['particles'], isWebGPU: boolean }) {
+  const { count = 1000000, behavior = 'float', color = 'white', size = [0.05, 0.2] } = config;
   const ref = useRef<THREE.Points>(null);
-  const [geometry] = useState(() => new THREE.BufferGeometry());
-  const [material] = useState(() => new THREE.PointsMaterial({ 
-    size: 0.1, 
-    transparent: true, 
-    opacity: 0.8,
-    vertexColors: true,
-    sizeAttenuation: true,
-  }));
   
-  // Initialize geometry with instanced attributes
+  const [material] = useState(() => {
+    if (isWebGPU && (Nodes as any).PointsNodeMaterial) {
+      const mat = new (Nodes as any).PointsNodeMaterial({
+        size: 0.1,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      // Set color based on config using nodes
+      let colorNode;
+      switch (color) {
+        case 'neon': colorNode = Nodes.color(0x00ffff); break;
+        case 'fire': colorNode = Nodes.color(0xff4400); break;
+        case 'water': colorNode = Nodes.color(0x00aaff); break;
+        case 'galaxy': colorNode = Nodes.color(0xaa00ff); break;
+        default: colorNode = Nodes.color(0xffffff);
+      }
+      mat.colorNode = colorNode;
+      return mat;
+    } else {
+      // CPU Fallback Material
+      return new THREE.PointsMaterial({ 
+        size: 0.1, 
+        transparent: true, 
+        opacity: 0.8,
+        vertexColors: true,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+    }
+  });
+
+  const [geometry] = useState(() => new THREE.BufferGeometry());
+  
+  // TSL Compute Variables
+  const computeShaderRef = useRef<any>(null);
+
+  // Initialize geometry with instanced attributes (CPU fallback OR TSL initial state)
   useEffect(() => {
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const lifetimes = new Float32Array(count);
     const velocities = new Float32Array(count * 3);
     
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      // Random initial position in sphere
-      const radius = 5 + Math.random() * 10;
+      const radius = 5 + Math.random() * 20;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
+      
       positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
       positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
       positions[i3 + 2] = radius * Math.cos(phi);
       
-      // Colors
+      // Colors (used mostly by CPU fallback)
       const colorObj = new THREE.Color();
       switch (color) {
         case 'neon': colorObj.setHSL(0.8 + Math.random() * 0.2, 1, 0.5); break;
@@ -319,97 +205,97 @@ function VibeParticles({ config }: { config: Required<VibeConfig>['particles'] }
       colors[i3 + 1] = colorObj.g;
       colors[i3 + 2] = colorObj.b;
       
-      // Size and lifetime
-      sizes[i] = size[0] + Math.random() * (size[1] - size[0]);
-      lifetimes[i] = Math.random() * life;
-      
-      // Velocity based on behavior
-      switch (behavior) {
-        case 'swarm':
-          velocities[i3] = (Math.random() - 0.5) * 2;
-          velocities[i3 + 1] = (Math.random() - 0.5) * 2;
-          velocities[i3 + 2] = (Math.random() - 0.5) * 2;
-          break;
-        case 'explode':
-                  velocities[i3] = positions[i3]! * 0.1;
-                  velocities[i3 + 1] = positions[i3 + 1]! * 0.1;
-                  velocities[i3 + 2] = positions[i3 + 2]! * 0.1;
-          break;
-        case 'trail':
-          velocities[i3] = 0;
-          velocities[i3 + 1] = -0.5 - Math.random() * 0.5;
-          velocities[i3 + 2] = 0;
-          break;
-        default: // float
-          velocities[i3] = (Math.random() - 0.5) * 0.5;
-          velocities[i3 + 1] = (Math.random() - 0.5) * 0.5;
-          velocities[i3 + 2] = (Math.random() - 0.5) * 0.5;
-      }
+      // Velocities
+      velocities[i3] = (Math.random() - 0.5) * 2;
+      velocities[i3 + 1] = (Math.random() - 0.5) * 2;
+      velocities[i3 + 2] = (Math.random() - 0.5) * 2;
     }
     
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    geometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+    
+    // Setup TSL Compute Node if available
+    if (isWebGPU && Nodes.storage) {
+      try {
+        const positionBuffer = new (Nodes as any).StorageInstancedBufferAttribute(geometry.attributes.position.array as Float32Array, 3);
+        const velocityBuffer = new (Nodes as any).StorageInstancedBufferAttribute(geometry.attributes.velocity.array as Float32Array, 3);
+        
+        const positionStorage = Nodes.storage(positionBuffer, 'vec3', count);
+        const velocityStorage = Nodes.storage(velocityBuffer, 'vec3', count);
+        
+        // Define Compute Node Logic
+        const computeLogic = Nodes.tslFn(() => {
+          const pos = positionStorage.element(Nodes.instanceIndex);
+          const vel = velocityStorage.element(Nodes.instanceIndex);
+          
+          if (behavior === 'swarm') {
+            // Simple swarm logic via nodes
+            const dist = Nodes.length(pos);
+            const force = Nodes.vec3(pos).div(dist).mul(0.1);
+            vel.subAssign(force);
+          } else if (behavior === 'explode') {
+             vel.mulAssign(1.01);
+          }
+          
+          pos.addAssign(vel.mul(0.016)); // approx delta
+        });
+        
+        computeShaderRef.current = computeLogic().compute(count);
+        (material as any).positionNode = positionStorage.toAttribute();
+      } catch (e) {
+        console.warn("TSL Compute not fully supported in this version", e);
+      }
+    }
     
     return () => {
       geometry.dispose();
       material.dispose();
     };
-  }, [count, behavior, color, size, life, geometry, material]);
+  }, [count, behavior, color, size, geometry, material, isWebGPU]);
   
   // Animation loop
-      useFrame((_state, delta) => {
-      if (!ref.current) return;
-  
+  useFrame(({ gl }, delta) => {
+    if (!ref.current) return;
+
+    if (isWebGPU && computeShaderRef.current && (gl as any).compute) {
+      // Run GPU Compute Shader
+      (gl as any).compute(computeShaderRef.current);
+    } else {
+      // CPU Fallback for WebGL2 without Compute
       const positionAttr = geometry.getAttribute('position');
-      const lifetimeAttr = geometry.getAttribute('lifetime');
       const velocityAttr = geometry.getAttribute('velocity');
-      if (!positionAttr || !lifetimeAttr || !velocityAttr) return;
+      if (!positionAttr || !velocityAttr) return;
     
-            const positionArray: Float32Array = positionAttr.array as Float32Array;
-            const lifetimeArray: Float32Array = lifetimeAttr.array as Float32Array;
-            const velocityArray: Float32Array = velocityAttr.array as Float32Array;
+      const positionArray: Float32Array = positionAttr.array as Float32Array;
+      const velocityArray: Float32Array = velocityAttr.array as Float32Array;
     
       for (let i = 0; i < count; i++) {
         const i3 = i * 3;
       
-        // Update position
-              positionArray[i3]! += velocityArray[i3]! * delta;
-              positionArray[i3 + 1]! += velocityArray[i3 + 1]! * delta;
-              positionArray[i3 + 2]! += velocityArray[i3 + 2]! * delta;
+        // Position update
+        positionArray[i3]! += velocityArray[i3]! * delta;
+        positionArray[i3 + 1]! += velocityArray[i3 + 1]! * delta;
+        positionArray[i3 + 2]! += velocityArray[i3 + 2]! * delta;
       
-        // Update lifetime
-              lifetimeArray[i]! -= delta;
-              if (lifetimeArray[i]! <= 0) {
-          // Respawn
-                lifetimeArray[i]! = life;
-          const radius = 5 + Math.random() * 10;
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.acos(2 * Math.random() - 1);
-                positionArray[i3]! = radius * Math.sin(phi) * Math.cos(theta);
-                positionArray[i3 + 1]! = radius * Math.sin(phi) * Math.sin(theta);
-                positionArray[i3 + 2]! = radius * Math.cos(phi);
-        }
-      
-        // Behavior-specific updates
+        // Behavior
         if (behavior === 'swarm') {
-          // Attract to center
-                const dist = Math.sqrt(positionArray[i3]!**2 + positionArray[i3+1]!**2 + positionArray[i3+2]!**2);
+          const dist = Math.sqrt(positionArray[i3]!**2 + positionArray[i3+1]!**2 + positionArray[i3+2]!**2);
           if (dist > 0) {
-                  velocityArray[i3]! -= positionArray[i3]! / dist * 0.5 * delta;
-                  velocityArray[i3 + 1]! -= positionArray[i3 + 1]! / dist * 0.5 * delta;
-                  velocityArray[i3 + 2]! -= positionArray[i3 + 2]! / dist * 0.5 * delta;
+            velocityArray[i3]! -= positionArray[i3]! / dist * 0.5 * delta;
+            velocityArray[i3 + 1]! -= positionArray[i3 + 1]! / dist * 0.5 * delta;
+            velocityArray[i3 + 2]! -= positionArray[i3 + 2]! / dist * 0.5 * delta;
           }
-        } else if (behavior === 'attract') {
-          // Mouse attraction would go here
+        } else if (behavior === 'explode') {
+            velocityArray[i3]! *= 1.01;
+            velocityArray[i3 + 1]! *= 1.01;
+            velocityArray[i3 + 2]! *= 1.01;
         }
       }
     
       positionAttr.needsUpdate = true;
-      lifetimeAttr.needsUpdate = true;
-    });
+    }
+  });
   
   return <points ref={ref} geometry={geometry} material={material} />;
 }
@@ -429,7 +315,6 @@ function PostProcessingEffect({ config }: PostProcessingEffectProps) {
    material: THREE.ShaderMaterial;
   } | null>(null);
 
-  // Initialize post-processing compositor once
   useEffect(() => {
    const ppScene = new THREE.Scene();
    const ppCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -510,7 +395,6 @@ function PostProcessingEffect({ config }: PostProcessingEffectProps) {
    };
   }, []);
 
-  // Update uniforms each frame
   useFrame(() => {
    const comp = composerRef.current;
    if (!comp) return;
@@ -527,63 +411,30 @@ function PostProcessingEffect({ config }: PostProcessingEffectProps) {
 
 // ============================================
 // MAIN VIBE CANVAS COMPONENT
-  // ============================================
+// ============================================
 
 export interface VibeCanvasProps {
-  /** Vibe configuration - natural language JSON */
   config?: VibeConfig;
-  /** Children to render inside the scene */
   children?: React.ReactNode;
-  /** Fallback UI when WebGL not supported */
   fallback?: React.ReactNode;
-  /** Callback when canvas is ready */
   onReady?: (api: VibeCanvasAPI) => void;
-  /** Custom class name */
   className?: string;
-  /** Custom style */
   style?: React.CSSProperties;
 }
 
-/** Public API returned by VibeCanvas */
 export interface VibeCanvasAPI {
-  /** Update config at runtime */
   setConfig: (config: Partial<VibeConfig>) => void;
-  /** Add object to scene programmatically */
   addObject: (object: THREE.Object3D) => void;
-  /** Remove object from scene */
   removeObject: (object: THREE.Object3D) => void;
-  /** Get Three.js scene */
   getScene: () => THREE.Scene | null;
-  /** Get Three.js camera */
   getCamera: () => THREE.Camera | null;
-  /** Get Three.js renderer */
   getRenderer: () => THREE.WebGLRenderer | null;
-  /** Take screenshot */
   screenshot: (options?: { width?: number; height?: number; type?: string; encoderOptions?: number }) => Promise<string>;
-  /** Start physics simulation */
   startPhysics: () => void;
-  /** Stop physics simulation */
   stopPhysics: () => void;
-  /** Add physics body */
   addPhysicsBody: (config: { mass: number; position: [number, number, number]; size: [number, number, number] }) => PhysicsBodyHandle;
 }
 
-/**
- * VibeCanvas - The declarative magic layer for "Vibe Coders"
- * 
- * Accepts natural-language-like JSON configuration and automatically
- * maps to optimized shaders, physics presets, and post-processing.
- * 
- * @example
- * ```tsx
- * <VibeCanvas config={{
- *   environment: 'cyberpunk-neon',
- *   physics: 'low-gravity',
- *   particles: { count: 10000, behavior: 'swarm' },
- *   postProcessing: { bloom: 0.5, vignette: 0.3 }
- * }} />
- * ```
- */
 export function VibeCanvas({ 
   config = {}, 
   children, 
@@ -596,11 +447,9 @@ export function VibeCanvas({
     deepMerge(DEFAULT_VIBE_CONFIG, config) as Required<VibeConfig>
   );
   
-  // SSR Hydration Check
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
-  // WebGPU / WebGL detection
   const [hasWebGL, setHasWebGL] = useState(true);
   const [useWebGPU, setUseWebGPU] = useState(false);
   
@@ -609,12 +458,10 @@ export function VibeCanvas({
   const physicsRef = useRef<PredictivePhysics | null>(null);
   const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   
-  // Initialize physics
   useEffect(() => {
     if (mergedConfig.physics !== 'none') {
       physicsRef.current = createPredictivePhysics();
       
-      // Set gravity based on preset
       const gravityMap: Record<string, [number, number, number]> = {
         'low-gravity': [0, -1.62, 0],
         'earth': [0, -9.81, 0],
@@ -637,7 +484,6 @@ export function VibeCanvas({
     };
   }, [mergedConfig.physics]);
   
-  // Hardware capabilities detection
   useEffect(() => {
     if ((navigator as any).gpu) {
       setUseWebGPU(true);
@@ -662,7 +508,6 @@ export function VibeCanvas({
     );
   }
 
-  // Graceful degradation: WebGPU -> WebGL2 -> CSS 3D
   if (!hasWebGL && !useWebGPU) {
     return (
       <div 
@@ -700,7 +545,6 @@ export function VibeCanvas({
     );
   }
   
-  // Build API object
   const api = useMemo((): VibeCanvasAPI => ({
     setConfig: (newConfig: Partial<VibeConfig>) => {
         setMergedConfig(prev => deepMerge(prev, newConfig) as Required<VibeConfig>);
@@ -708,7 +552,6 @@ export function VibeCanvas({
     addObject: (object: THREE.Object3D) => {
       const id = `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       sceneObjectsRef.current.set(id, object);
-      // Note: In real implementation, this would add to the scene
     },
     removeObject: (object: THREE.Object3D) => {
       for (const [id, obj] of sceneObjectsRef.current) {
@@ -718,7 +561,7 @@ export function VibeCanvas({
         }
       }
     },
-    getScene: () => null, // Would return scene from useThree
+    getScene: () => null,
     getCamera: () => null,
     getRenderer: () => null,
     screenshot: async () => '',
@@ -738,13 +581,11 @@ export function VibeCanvas({
     },
   }), []);
   
-  // Provide API to parent
   useEffect(() => {
     apiRef.current = api;
     onReady?.(api);
   }, [api, onReady]);
   
-  // Environment presets
   const environmentPreset = useMemo(() => {
     switch (mergedConfig.environment) {
       case 'cyberpunk-neon': return 'city';
@@ -756,7 +597,6 @@ export function VibeCanvas({
     }
   }, [mergedConfig.environment]);
   
-  // Camera settings
   const cameraSettings = useMemo(() => ({
       position: mergedConfig.camera?.position ?? [0, 0, 5],
       fov: mergedConfig.camera?.fov ?? 50,
@@ -764,7 +604,6 @@ export function VibeCanvas({
       far: mergedConfig.camera?.far ?? 1000,
   }), [mergedConfig.camera]);
   
-  // Lighting based on preset
   const lighting = useMemo(() => {
       const l = mergedConfig.lighting || {};
       const { preset, ambientIntensity, directionalIntensity, directionalPosition, shadows, shadowResolution } = l;
@@ -777,16 +616,16 @@ export function VibeCanvas({
         minimal: { ambient: 0.6, dir: 1, pos: [10, 10, 10] },
       };
     
-            const presetKey = preset ?? 'studio';
-                        const p = (presets[presetKey] ?? presets.studio)!;
+      const presetKey = preset ?? 'studio';
+      const p = (presets[presetKey] ?? presets.studio)!;
       
-                  return {
-                                      ambientIntensity: ambientIntensity ?? p.ambient,
-                                      directionalIntensity: directionalIntensity ?? p.dir,
-                                      directionalPosition: directionalPosition ?? p.pos,
-                    shadows: shadows ?? true,
-                    shadowResolution: shadowResolution ?? 2048,
-                  };
+      return {
+        ambientIntensity: ambientIntensity ?? p.ambient,
+        directionalIntensity: directionalIntensity ?? p.dir,
+        directionalPosition: directionalPosition ?? p.pos,
+        shadows: shadows ?? true,
+        shadowResolution: shadowResolution ?? 2048,
+      };
     }, [mergedConfig.lighting]);
   
   return (
@@ -795,7 +634,7 @@ export function VibeCanvas({
         ref={canvasRef as any}
         camera={cameraSettings}
         shadows={lighting.shadows}
-          dpr={mergedConfig.performance.dpr ?? [1, 2]}
+        dpr={mergedConfig.performance.dpr ?? [1, 2]}
         gl={(canvas) => {
           if (useWebGPU) {
             return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
@@ -804,14 +643,14 @@ export function VibeCanvas({
         }}
       >
         <SoftShadows 
-                  size={lighting.shadowResolution} 
-                  samples={16} 
-                  focus={0.5} 
-                />
+          size={lighting.shadowResolution} 
+          samples={16} 
+          focus={0.5} 
+        />
         <ambientLight intensity={lighting.ambientIntensity} />
         <directionalLight
           castShadow={lighting.shadows}
-                  position={lighting.directionalPosition as [number, number, number]}
+          position={lighting.directionalPosition as [number, number, number]}
           intensity={lighting.directionalIntensity}
           shadow-mapSize={lighting.shadowResolution ? [lighting.shadowResolution, lighting.shadowResolution] : [2048, 2048]}
           shadow-camera-near={0.1}
@@ -824,25 +663,21 @@ export function VibeCanvas({
         <Environment preset={environmentPreset as any} />
         <ContactShadows opacity={0.3} scale={20} blur={2} far={10} />
         
-        {/* Particle System */}
-                        {mergedConfig.particles && mergedConfig.particles.count! > 0 && (
-          <VibeParticles config={mergedConfig.particles} />
+        {mergedConfig.particles && mergedConfig.particles.count! > 0 && (
+          <VibeParticles config={mergedConfig.particles} isWebGPU={useWebGPU} />
         )}
         
-        {/* Post Processing - custom screen-space shader effects */}
-                {mergedConfig.postProcessing && (
-                  <PostProcessingEffect config={mergedConfig.postProcessing} />
-                )}
+        {mergedConfig.postProcessing && (
+          <PostProcessingEffect config={mergedConfig.postProcessing} />
+        )}
         
-                {/* User Children */}
-                <group>
-                  {children}
-                </group>
+        <group>
+          {children}
+        </group>
         
-                {/* Auto-rotate camera if enabled */}
-                {mergedConfig.camera.autoRotate && (
-                  <AutoRotate speed={mergedConfig.camera.autoRotateSpeed ?? 0.5} />
-                )}
+        {mergedConfig.camera.autoRotate && (
+          <AutoRotate speed={mergedConfig.camera.autoRotateSpeed ?? 0.5} />
+        )}
       </Canvas>
     </div>
   );
@@ -873,27 +708,11 @@ function AutoRotate({ speed }: { speed?: number }) {
 // HOOK: useVibeCoding
 // ============================================
 
-/**
- * Hook for programmatic vibe coding - natural language scene manipulation
- * 
- * @example
- * ```tsx
- * const { scene, add, remove, animate } = useVibeCoding();
- * 
- * // Add a glowing cube
- * add('cube', { position: [0, 1, 0], color: '#ff00ff', glow: true });
- * 
- * // Natural language commands
- * scene.command('make it rain particles');
- * scene.command('add physics to all cubes');
- * ```
- */
 export function useVibeCoding() {
   const { scene, camera, gl } = useThree();
   const physicsRef = useRef<PredictivePhysics | null>(null);
   const objectMapRef = useRef<Map<string, THREE.Object3D>>(new Map());
   
-  // Initialize physics lazily
   const getPhysics = useCallback(() => {
     if (!physicsRef.current) {
       physicsRef.current = createPredictivePhysics();
@@ -903,7 +722,6 @@ export function useVibeCoding() {
     return physicsRef.current;
   }, []);
   
-  /** Add object by natural language description */
   const add = useCallback((type: string, props: Record<string, any> = {}) => {
     const id = props.id || `${type}_${Date.now()}`;
     
@@ -929,46 +747,6 @@ export function useVibeCoding() {
       case 'plane':
         object = new THREE.Mesh(new THREE.PlaneGeometry(props.width || 10, props.height || 10), material);
         break;
-      case 'cylinder':
-        object = new THREE.Mesh(new THREE.CylinderGeometry(props.radiusTop || 0.5, props.radiusBottom || 0.5, props.height || 1, 32), material);
-        break;
-      case 'torus':
-        object = new THREE.Mesh(new THREE.TorusGeometry(props.radius || 0.5, props.tube || 0.2, 16, 32), material);
-        break;
-      case 'particles':
-        // Create particle system
-        const count = props.count || 1000;
-        const geo = new THREE.BufferGeometry();
-        const positions = new Float32Array(count * 3);
-        const colors = new Float32Array(count * 3);
-        const sizes = new Float32Array(count);
-        
-        for (let i = 0; i < count; i++) {
-          positions[i * 3] = (Math.random() - 0.5) * (props.spread || 10);
-          positions[i * 3 + 1] = (Math.random() - 0.5) * (props.spread || 10);
-          positions[i * 3 + 2] = (Math.random() - 0.5) * (props.spread || 10);
-          
-          const c = new THREE.Color(props.color || '#ffffff');
-          colors[i * 3] = c.r;
-          colors[i * 3 + 1] = c.g;
-          colors[i * 3 + 2] = c.b;
-          
-          sizes[i] = props.size || 0.1;
-        }
-        
-        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-        
-        const particleMaterial = new THREE.PointsMaterial({
-          size: props.size || 0.1,
-          vertexColors: true,
-          transparent: true,
-          sizeAttenuation: true,
-        });
-        
-        object = new THREE.Points(geo, particleMaterial);
-        break;
       default:
         object = new THREE.Group();
     }
@@ -989,7 +767,6 @@ export function useVibeCoding() {
     scene.add(object);
     objectMapRef.current.set(id, object);
     
-    // Add physics if requested
     if (props.physics) {
       const physics = getPhysics();
       physics.addBody({
@@ -1006,7 +783,6 @@ export function useVibeCoding() {
     return { id, object };
   }, [scene, getPhysics]);
   
-  /** Remove object by ID */
   const remove = useCallback((id: string) => {
     const object = objectMapRef.current.get(id);
     if (object) {
@@ -1025,7 +801,6 @@ export function useVibeCoding() {
     }
   }, [scene]);
   
-  /** Animate object */
   const animate = useCallback((id: string, animation: { 
     property: 'position' | 'rotation' | 'scale';
       to: [number, number, number];
@@ -1054,49 +829,13 @@ export function useVibeCoding() {
     requestAnimationFrame(frameHandler);
   }, []);
   
-  /** Natural language command (experimental) */
   const command = useCallback((text: string) => {
     const lower = text.toLowerCase();
-    
-    if (lower.includes('rain') || lower.includes('particles')) {
-      add('particles', { count: 5000, color: '#00ffff', spread: 20, size: 0.05 });
-    } else if (lower.includes('physics')) {
-      // Enable physics on all objects
-      objectMapRef.current.forEach(obj => {
-        if (obj instanceof THREE.Mesh) {
-          const physics = getPhysics();
-          physics.addBody({
-            mass: 1,
-            position: obj.position.toArray() as [number, number, number],
-                      velocity: [0, 0, 0],
-                      aabbHalfExtents: [0.5, 0.5, 0.5],
-                      restitution: 0.5,
-                      friction: 0.3,
-                      isStatic: false,
-                    });
-        }
-      });
-    } else if (lower.includes('explode')) {
-      objectMapRef.current.forEach(obj => {
-        if (obj instanceof THREE.Mesh) {
-          const physics = getPhysics();
-          physics.addBody({
-            mass: 1,
-            position: obj.position.toArray() as [number, number, number],
-                      velocity: [0, 0, 0],
-                      aabbHalfExtents: [0.5, 0.5, 0.5],
-                      restitution: 0.8,
-                      friction: 0.1,
-                      isStatic: false,
-                    });
-        }
-      });
-    } else if (lower.includes('clear') || lower.includes('remove all')) {
+    if (lower.includes('clear') || lower.includes('remove all')) {
       objectMapRef.current.forEach((_, id) => remove(id));
     }
-  }, [add, getPhysics, remove]);
+  }, [remove]);
   
-  /** Cleanup on unmount */
   useEffect(() => {
     return () => {
       physicsRef.current?.dispose();
@@ -1122,13 +861,10 @@ export function useVibeCoding() {
 
 function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target } as T;
-  
   for (const key of Object.keys(source) as (keyof T)[]) {
     const sourceValue = source[key];
     const targetValue = target[key];
-    
     if (sourceValue === undefined) continue;
-    
     if (
       sourceValue !== null &&
       typeof sourceValue === 'object' &&
@@ -1142,6 +878,5 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
       (result as any)[key] = sourceValue;
     }
   }
-  
   return result;
 }
