@@ -1,5 +1,5 @@
 {
-  "name": "vibe-gl-core",
+  "name": "@vibe-gl/core",
   "version": "1.1.0",
   "type": "module",
   "main": "dist/index.js",
