@@ -639,7 +639,7 @@ export function VibeCanvas({
   
   // Hardware capabilities detection
   useEffect(() => {
-    if (navigator.gpu) {
+    if ((navigator as any).gpu) {
       setUseWebGPU(true);
       setHasWebGL(true);
     } else {
