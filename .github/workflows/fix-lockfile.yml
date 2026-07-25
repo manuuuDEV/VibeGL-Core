@@ -10,13 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable pnpm
+
       - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.1
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'pnpm'
+          
       - name: Regenerate lockfile
         run: pnpm install --no-frozen-lockfile --ignore-scripts
+        
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
