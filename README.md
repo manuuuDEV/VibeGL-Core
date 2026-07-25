@@ -4,11 +4,12 @@
 
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@vibe-gl/core?style=flat-square&color=00ff88)](https://www.npmjs.com/package/@vibe-gl/core)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/manuuuDEV/VibeGL-Core/build-and-test.yml?style=flat-square&color=00ff88)](https://github.com/manuuuDEV/VibeGL-Core/actions)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@vibe-gl/core?style=flat-square&color=00ff88)](https://bundlephobia.com/package/@vibe-gl/core)
 [![License MIT](https://img.shields.io/badge/license-MIT-00ff88?style=flat-square)](LICENSE)
-[![Downloads/Month](https://img.shields.io/npm/dm/@vibe-gl/core?style=flat-square&color=00ff88)](https://www.npmjs.com/package/@vibe-gl/core)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-00ff88?style=flat-square)](https://www.typescriptlang.org/)
+[![React 18+](https://img.shields.io/badge/React-18+-00ff88?style=flat-square)](https://react.dev)
+[![Three.js 0.160+](https://img.shields.io/badge/Three.js-0.160+-00ff88?style=flat-square)](https://threejs.org)
+[![WebGL2](https://img.shields.io/badge/WebGL2-Required-00ff88?style=flat-square)](https://caniuse.com/webgl2)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-00ff88?style=flat-square)](./CHANGELOG.md)
 
 **From Zero to 120FPS 3D in 5 lines of code.** 🚀
 
