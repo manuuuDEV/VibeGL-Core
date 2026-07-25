@@ -1,3 +1,4 @@
+"use client";
 import React, { 
   useRef, 
   useEffect, 
@@ -7,6 +8,7 @@ import React, {
 } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
 import { 
   Environment, 
   SoftShadows, 
@@ -593,7 +595,11 @@ export function VibeCanvas({
   const [mergedConfig, setMergedConfig] = useState<Required<VibeConfig>>(() => 
     deepMerge(DEFAULT_VIBE_CONFIG, config) as Required<VibeConfig>
   );
+  
+  // WebGPU / WebGL detection
   const [hasWebGL, setHasWebGL] = useState(true);
+  const [useWebGPU, setUseWebGPU] = useState(false);
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const apiRef = useRef<VibeCanvasAPI | null>(null);
   const physicsRef = useRef<PredictivePhysics | null>(null);
@@ -627,18 +633,23 @@ export function VibeCanvas({
     };
   }, [mergedConfig.physics]);
   
-  // WebGL detection
+  // Hardware capabilities detection
   useEffect(() => {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      setHasWebGL(!!gl);
-    } catch {
-      setHasWebGL(false);
+    if (navigator.gpu) {
+      setUseWebGPU(true);
+      setHasWebGL(true);
+    } else {
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        setHasWebGL(!!gl);
+      } catch {
+        setHasWebGL(false);
+      }
     }
   }, []);
   
-  if (!hasWebGL) {
+  if (!hasWebGL && !useWebGPU) {
     return (
       <div 
         className={className} 
@@ -646,7 +657,7 @@ export function VibeCanvas({
       >
         {fallback || (
           <div style={{ padding: 20, textAlign: 'center', background: '#1a1a1a', color: '#fff', borderRadius: 8 }}>
-            <h2>WebGL 2 Not Supported</h2>
+            <h2>WebGL/WebGPU Not Supported</h2>
             <p>Please update your browser or enable hardware acceleration.</p>
           </div>
         )}
@@ -750,10 +761,11 @@ export function VibeCanvas({
         camera={cameraSettings}
         shadows={lighting.shadows}
           dpr={mergedConfig.performance.dpr ?? [1, 2]}
-        gl={{ 
-          preserveDrawingBuffer: true,
-          antialias: true,
-          alpha: true,
+        gl={(canvas) => {
+          if (useWebGPU) {
+            return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
+          }
+          return new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
         }}
       >
         <SoftShadows 
@@ -808,13 +820,14 @@ export function VibeCanvas({
 function AutoRotate({ speed }: { speed?: number }) {
   const { camera, scene } = useThree();
   const speedValue = speed ?? 0.5;
+  const target = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   
   useFrame((state) => {
     if (camera && scene) {
       const time = state.clock.getElapsedTime() * speedValue;
       camera.position.x = Math.cos(time) * 10;
       camera.position.z = Math.sin(time) * 10;
-      camera.lookAt(0, 0, 0);
+      camera.lookAt(target);
     }
   });
   
