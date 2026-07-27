@@ -18,8 +18,8 @@ export default function PlaygroundPage() {
           config={{
             environment: "cyberpunk-neon",
             physics: "zero-g",
-            particles: 50000,
-            postProcessing: { bloom: true, vignette: true }
+            particles: { count: 50000 },
+            postProcessing: { bloom: 0.5, vignette: 0.5 }
           }}
         />
       </div>
