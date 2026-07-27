@@ -18,7 +18,10 @@ export interface PhysicsBodyConfig {
   acceleration?: [number, number, number];
   mass?: number;
   radius?: number;
-  static?: boolean;
+  isStatic?: boolean;
+  aabbHalfExtents?: [number, number, number];
+  restitution?: number;
+  friction?: number;
   id?: number; // Added by addBody method
 }
 

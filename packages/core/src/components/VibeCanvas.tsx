@@ -219,7 +219,42 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
     
     // Setup TSL Compute Node if available
     if (isWebGPU && (Nodes as any).storage) {
-      // TSL Compute logic removed due to Three.js version incompatibility
+      try {
+        const posAttr = geometry.attributes.position;
+        const velAttr = geometry.attributes.velocity;
+        if (!posAttr || !velAttr) {
+          console.warn('Missing position or velocity attributes on geometry');
+          return;
+        }
+        
+        const positionBuffer = new (Nodes as any).StorageInstancedBufferAttribute(posAttr.array as Float32Array, 3);
+        const velocityBuffer = new (Nodes as any).StorageInstancedBufferAttribute(velAttr.array as Float32Array, 3);
+        
+        const positionStorage = (Nodes as any).storage(positionBuffer, 'vec3', count);
+        const velocityStorage = (Nodes as any).storage(velocityBuffer, 'vec3', count);
+        
+        // Define Compute Node Logic
+        const computeLogic = (Nodes as any).tslFn(() => {
+          const pos = positionStorage.element((Nodes as any).instanceIndex);
+          const vel = velocityStorage.element((Nodes as any).instanceIndex);
+          
+          if (behavior === 'swarm') {
+            // Simple swarm logic via nodes
+            const dist = (Nodes as any).length(pos);
+            const force = (Nodes as any).vec3(pos).div(dist).mul(0.1);
+            vel.subAssign(force);
+          } else if (behavior === 'explode') {
+             vel.mulAssign(1.01);
+          }
+          
+          pos.addAssign(vel.mul(0.016)); // approx delta
+        });
+        
+        computeShaderRef.current = computeLogic().compute(count);
+        (material as any).positionNode = positionStorage.toAttribute();
+      } catch (e) {
+        console.warn("TSL Compute not fully supported in this version", e);
+      }
     }
     
     return () => {
