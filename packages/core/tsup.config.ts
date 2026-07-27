@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs', 'iife'],
+  format: ['esm', 'cjs'],
   dts: {
     resolve: false,
     entry: 'src/index.ts',
@@ -25,6 +25,6 @@ export default defineConfig({
     };
   },
   onSuccess: async () => {
-    console.log('vibe-gl-core: Build complete! Output formats: ESM, CJS, IIFE (UMD)');
+    console.log('vibe-gl-core: Build complete! Output formats: ESM, CJS');
   },
 });
