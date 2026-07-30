@@ -18,10 +18,7 @@ export default defineConfig({
   external: ['react', 'react-dom', 'three', '@react-three/fiber', '@react-three/drei', '@vibe-gl/math-utils'],
   esbuildOptions(options) {
     options.banner = {
-      js: '/*! vibe-gl-core v0.1.0 | MIT License | github.com/manuuuDEV/VibeGL-Core */',
-    };
-    options.footer = {
-      js: 'if (typeof globalThis !== "undefined") globalThis.VibeGL = VibeGL;',
+      js: '"use client";\n/*! vibe-gl-core v0.1.0 | MIT License | github.com/manuuuDEV/VibeGL-Core */',
     };
   },
   onSuccess: async () => {

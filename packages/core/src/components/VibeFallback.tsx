@@ -1,3 +1,4 @@
+'use client';
 import React, { useEffect, useState, useMemo, CSSProperties } from "react";
 
 export interface VibeFallbackProps {

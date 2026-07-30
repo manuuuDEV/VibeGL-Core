@@ -1,3 +1,4 @@
+'use client';
 "use client";
 import React, { 
   useRef, 
@@ -217,7 +218,8 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
     
-    // Setup TSL Compute Node if available
+    // Setup TSL Compute Node if available (DISABLED due to Three.js compatibility issues)
+    /*
     if (isWebGPU && (Nodes as any).storage) {
       try {
         const posAttr = geometry.attributes.position;
@@ -256,6 +258,7 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
         console.warn("TSL Compute not fully supported in this version", e);
       }
     }
+    */
     
     return () => {
       geometry.dispose();

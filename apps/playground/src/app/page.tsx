@@ -1,6 +1,8 @@
 import { ControlPanel } from "@/components/ControlPanel";
 import { NaturalLanguageInput } from "@/components/NaturalLanguageInput";
-import { VibeCanvas } from "@vibe-gl/core";
+import dynamic from 'next/dynamic';
+
+const VibeCanvas = dynamic(() => import('@vibe-gl/core').then((mod) => mod.VibeCanvas), { ssr: false });
 
 export default function PlaygroundPage() {
   return (
@@ -19,7 +21,7 @@ export default function PlaygroundPage() {
             environment: "cyberpunk-neon",
             physics: "zero-g",
             particles: { count: 50000 },
-            postProcessing: { bloom: 0.5, vignette: 0.5 }
+            postProcessing: { bloom: 1, vignette: 1 }
           }}
         />
       </div>

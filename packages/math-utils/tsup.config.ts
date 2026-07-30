@@ -25,9 +25,6 @@ export default defineConfig({
     options.banner = {
       js: '/*! @vibe-gl/math-utils v0.1.0 | MIT License */',
     };
-    options.footer = {
-      js: 'if (typeof globalThis !== "undefined") globalThis.VibeGLMathUtils = VibeGLMathUtils;',
-    };
   },
   onSuccess: async () => {
     console.log('@vibe-gl/math-utils: Build complete! Output formats: ESM, CJS, IIFE (UMD)');

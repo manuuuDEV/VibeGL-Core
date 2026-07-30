@@ -1,3 +1,4 @@
+'use client';
 import React, { useEffect, useRef, useState } from "react";
 import { Group } from "three";
 import { createPhysicsWorker } from "@vibe-gl/math-utils";

@@ -1,4 +1,3 @@
-"use client";
 /**
  * @fileoverview VibeGL-Core: The Zero-Boilerplate 3D React Engine
  * 
@@ -79,7 +78,6 @@ export * from './hooks/useVibeCleanup';
  * No abstraction layers. Full control.
  */
 export * from './components/RawGLPipeline';
-export { useShaderInjector, useMemoryPool } from './components/RawGLPipeline';
 
 /**
  * Fallback & Utilities
