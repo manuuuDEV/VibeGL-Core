@@ -4,8 +4,7 @@ import React, {
   useRef, 
   useEffect, 
   useMemo, 
-  useState, 
-  useCallback 
+  useState
 } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -467,6 +466,7 @@ export function VibeCanvas({
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const apiRef = useRef<VibeCanvasAPI | null>(null);
+  const threeRefs = useRef<{scene?: THREE.Scene, camera?: THREE.Camera, gl?: THREE.WebGLRenderer}>({});
   const physicsRef = useRef<PredictivePhysics | null>(null);
   const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   
@@ -573,10 +573,14 @@ export function VibeCanvas({
         }
       }
     },
-    getScene: () => null,
-    getCamera: () => null,
-    getRenderer: () => null,
-    screenshot: async () => '',
+    getScene: () => threeRefs.current.scene || null,
+    getCamera: () => threeRefs.current.camera || null,
+    getRenderer: () => threeRefs.current.gl || null,
+    screenshot: async (options) => {
+      const gl = threeRefs.current.gl;
+      if (!gl) return '';
+      return gl.domElement.toDataURL(options?.type || 'image/png', options?.encoderOptions);
+    },
     startPhysics: () => physicsRef.current?.start(),
     stopPhysics: () => physicsRef.current?.stop(),
     addPhysicsBody: (config) => {
@@ -654,6 +658,7 @@ export function VibeCanvas({
           return new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
         }}
       >
+                <VibeCanvasAPIHelper refs={threeRefs} />
         <SoftShadows 
           size={lighting.shadowResolution} 
           samples={16} 
@@ -696,6 +701,21 @@ export function VibeCanvas({
 }
 
 // ============================================
+
+// ============================================
+// API HELPER
+// ============================================
+
+function VibeCanvasAPIHelper({ refs }: { refs: React.MutableRefObject<any> }) {
+  const { scene, camera, gl } = useThree();
+  useEffect(() => {
+    refs.current.scene = scene;
+    refs.current.camera = camera;
+    refs.current.gl = gl;
+  }, [scene, camera, gl, refs]);
+  return null;
+}
+
 // AUTO ROTATE HELPER
 // ============================================
 
@@ -717,156 +737,6 @@ function AutoRotate({ speed }: { speed?: number }) {
 }
 
 // ============================================
-// HOOK: useVibeCoding
-// ============================================
-
-export function useVibeCoding() {
-  const { scene, camera, gl } = useThree();
-  const physicsRef = useRef<PredictivePhysics | null>(null);
-  const objectMapRef = useRef<Map<string, THREE.Object3D>>(new Map());
-  
-  const getPhysics = useCallback(() => {
-    if (!physicsRef.current) {
-      physicsRef.current = createPredictivePhysics();
-      physicsRef.current.setGravity(0, -9.81, 0);
-      physicsRef.current.start();
-    }
-    return physicsRef.current;
-  }, []);
-  
-  const add = useCallback((type: string, props: Record<string, any> = {}) => {
-    const id = props.id || `${type}_${Date.now()}`;
-    
-    let object: THREE.Object3D;
-    const material = new THREE.MeshStandardMaterial({ 
-      color: props.color || '#ffffff',
-      metalness: props.metalness ?? 0,
-      roughness: props.roughness ?? 0.5,
-      emissive: props.glow ? new THREE.Color(props.color || '#ffffff') : new THREE.Color(0),
-      emissiveIntensity: props.glow ? 0.5 : 0,
-      transparent: props.opacity !== undefined,
-      opacity: props.opacity ?? 1,
-    });
-    
-    switch (type.toLowerCase()) {
-      case 'cube':
-      case 'box':
-        object = new THREE.Mesh(new THREE.BoxGeometry(props.size || 1, props.size || 1, props.size || 1), material);
-        break;
-      case 'sphere':
-        object = new THREE.Mesh(new THREE.SphereGeometry(props.radius || 0.5, 32, 32), material);
-        break;
-      case 'plane':
-        object = new THREE.Mesh(new THREE.PlaneGeometry(props.width || 10, props.height || 10), material);
-        break;
-      default:
-        object = new THREE.Group();
-    }
-    
-    if (props.position) {
-          object.position.set(props.position[0], props.position[1], props.position[2]);
-    }
-    if (props.rotation) {
-          object.rotation.set(props.rotation[0], props.rotation[1], props.rotation[2]);
-    }
-    if (props.scale) {
-      object.scale.setScalar(typeof props.scale === 'number' ? props.scale : 1);
-    }
-    if (props.castShadow) object.castShadow = true;
-    if (props.receiveShadow) object.receiveShadow = true;
-    
-    object.name = id;
-    scene.add(object);
-    objectMapRef.current.set(id, object);
-    
-    if (props.physics) {
-      const physics = getPhysics();
-      physics.addBody({
-        mass: typeof props.physics === 'number' ? props.physics : 1,
-        position: props.position || [0, 0, 0],
-              velocity: [0, 0, 0],
-              aabbHalfExtents: [props.size || 0.5, props.size || 0.5, props.size || 0.5],
-              restitution: 0.5,
-              friction: 0.3,
-              isStatic: false,
-            });
-    }
-    
-    return { id, object };
-  }, [scene, getPhysics]);
-  
-  const remove = useCallback((id: string) => {
-    const object = objectMapRef.current.get(id);
-    if (object) {
-      scene.remove(object);
-      object.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => m.dispose());
-          } else {
-            child.material.dispose();
-          }
-        }
-      });
-      objectMapRef.current.delete(id);
-    }
-  }, [scene]);
-  
-  const animate = useCallback((id: string, animation: { 
-    property: 'position' | 'rotation' | 'scale';
-      to: [number, number, number];
-    duration: number;
-    easing?: (t: number) => number;
-  }) => {
-    const object = objectMapRef.current.get(id);
-    if (!object) return;
-    
-    const from = (object as any)[animation.property].toArray ? (object as any)[animation.property].toArray() : [0, 0, 0];
-    const startTime = performance.now();
-    
-    const frameHandler = () => {
-      const elapsed = (performance.now() - startTime) / 1000;
-      const progress = Math.min(elapsed / animation.duration, 1);
-      const eased = animation.easing ? animation.easing(progress) : progress;
-      
-          const current = from.map((f: number, i: number) => f + (animation.to[i]! - f) * eased);
-      (object as any)[animation.property].set(...current);
-      
-      if (progress < 1) {
-        requestAnimationFrame(frameHandler);
-      }
-    };
-    
-    requestAnimationFrame(frameHandler);
-  }, []);
-  
-  const command = useCallback((text: string) => {
-    const lower = text.toLowerCase();
-    if (lower.includes('clear') || lower.includes('remove all')) {
-      objectMapRef.current.forEach((_, id) => remove(id));
-    }
-  }, [remove]);
-  
-  useEffect(() => {
-    return () => {
-      physicsRef.current?.dispose();
-    };
-  }, []);
-  
-  return {
-    scene,
-    camera,
-    renderer: gl,
-    add,
-    remove,
-    animate,
-    command,
-    getPhysics,
-    objects: objectMapRef.current,
-  };
-}
-
 // ============================================
 // UTILITY: Deep Merge
 // ============================================

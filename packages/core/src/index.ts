@@ -65,6 +65,7 @@
  * Provides automatic LOD, frustum culling, physics, and post-processing.
  */
 export * from './components/VibeCanvas';
+export * from './hooks/useVibeCoding';
 
 /**
  * Cleanup utilities for strict memory management in React Suspense/unmounting.
