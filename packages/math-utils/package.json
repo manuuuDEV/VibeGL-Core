@@ -2,8 +2,18 @@
   "name": "@vibe-gl/math-utils",
   "version": "0.1.0",
   "type": "module",
-  "files": ["dist", "package.json", "README.md"],
-  "keywords": ["threejs", "math", "physics", "sharedarraybuffer", "euler"],
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "keywords": [
+    "threejs",
+    "math",
+    "physics",
+    "sharedarraybuffer",
+    "euler"
+  ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,5 +45,16 @@
     "tsup": "^8.0.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
+  },
+  "description": "Predictive physics engine with SharedArrayBuffer and Sweep and Prune collision detection",
+  "author": "manuuudev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manuuuDEV/VibeGL-Core.git",
+    "directory": "packages/math-utils"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

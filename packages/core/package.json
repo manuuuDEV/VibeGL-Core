@@ -2,26 +2,37 @@
   "name": "@vibe-gl/core",
   "version": "1.1.0",
   "type": "module",
-  "files": ["dist", "package.json", "README.md"],
-  "keywords": ["threejs", "react-three-fiber", "physics", "r3f", "engine", "webgl"],
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "keywords": [
+    "threejs",
+    "react-three-fiber",
+    "physics",
+    "r3f",
+    "engine",
+    "webgl"
+  ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js",
-        "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./hooks": {
-        "types": "./dist/hooks/index.d.ts",
-        "import": "./dist/hooks/index.js",
-        "require": "./dist/hooks/index.cjs"
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js",
+      "require": "./dist/hooks/index.cjs"
     },
     "./components": {
-        "types": "./dist/components/index.d.ts",
-        "import": "./dist/components/index.js",
-        "require": "./dist/components/index.cjs"
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js",
+      "require": "./dist/components/index.cjs"
     }
   },
   "scripts": {
@@ -50,5 +61,16 @@
     "tsup": "^8.0.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
+  },
+  "description": "React components for declarative 3D scenes with integrated physics",
+  "author": "manuuudev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manuuuDEV/VibeGL-Core.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
