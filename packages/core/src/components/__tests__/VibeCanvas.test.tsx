@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { VibeCanvas } from '../VibeCanvas';
 import * as MathUtils from '@vibe-gl/math-utils';
@@ -63,7 +62,7 @@ describe('VibeCanvas Component', () => {
 
     // R3F canvas might call this asynchronously, but we wait for it
     expect(onReadyMock).toHaveBeenCalled();
-    const api = onReadyMock.mock.calls[0][0];
+    const api = onReadyMock.mock.calls[0]?.[0];
     expect(api).toHaveProperty('getScene');
     expect(api).toHaveProperty('getCamera');
     expect(api).toHaveProperty('getRenderer');

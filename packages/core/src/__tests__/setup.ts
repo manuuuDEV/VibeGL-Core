@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+(globalThis as any).ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
@@ -42,7 +42,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn((contextId: string) => {
 }) as any;
 
 // Mock PointerEvent
-if (!global.PointerEvent) {
+if (!(globalThis as any).PointerEvent) {
   class PointerEvent extends MouseEvent {
     pointerId: number;
     constructor(type: string, params: PointerEventInit = {}) {
@@ -50,11 +50,11 @@ if (!global.PointerEvent) {
       this.pointerId = params.pointerId || 0;
     }
   }
-  global.PointerEvent = PointerEvent as any;
+  (globalThis as any).PointerEvent = PointerEvent as any;
 }
 
 // Mock WebGPU globals
-global.GPUShaderStage = {
+(globalThis as any).GPUShaderStage = {
   VERTEX: 1,
   FRAGMENT: 2,
   COMPUTE: 4,
