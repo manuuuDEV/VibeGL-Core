@@ -80,6 +80,9 @@ export * from './hooks/useVibeCleanup';
  * No abstraction layers. Full control.
  */
 export * from './components/RawGLPipeline';
+export * from './hooks/useShaderInjector';
+export * from './hooks/useMemoryPool';
+
 
 /**
  * Fallback & Utilities
