@@ -50,21 +50,37 @@ function initSharedMemory(buf) {
   postMessage({ type: 'READY' });
 }
 
-// O(N^2) active bodies detection, fine for <1000 bodies in a worker
+// 1D Sweep and Prune (SAP) for broadphase collision detection
 function detectCollisions(count, baseIdx) {
   const activeIds = [];
   for (let i = 0; i < count; i++) {
     if (views.active[baseIdx + i] === 1) activeIds.push(i);
   }
+  
+  // Sort active bodies by their AABB Min X
+  activeIds.sort((a, b) => {
+    const minXA = views.pos[baseIdx * 3 + a * 3] - halfExtentsX[a];
+    const minXB = views.pos[baseIdx * 3 + b * 3] - halfExtentsX[b];
+    return minXA - minXB;
+  });
+  
   const n = activeIds.length;
   
   for (let i = 0; i < n; i++) {
+    const idA = activeIds[i];
+    const pA = baseIdx * 3 + idA * 3;
+    const maxXA = views.pos[pA] + halfExtentsX[idA];
+    
     for (let j = i + 1; j < n; j++) {
-      const idA = activeIds[i];
       const idB = activeIds[j];
-      
-      const pA = baseIdx * 3 + idA * 3;
       const pB = baseIdx * 3 + idB * 3;
+      const minXB = views.pos[pB] - halfExtentsX[idB];
+      
+      // If the next body's Min X is beyond current body's Max X, we can stop checking
+      // because all subsequent bodies will also be beyond Max X (array is sorted)
+      if (minXB > maxXA) {
+        break; 
+      }
       
       const dX = views.pos[pA] - views.pos[pB];
       const dY = views.pos[pA+1] - views.pos[pB+1];
@@ -74,7 +90,7 @@ function detectCollisions(count, baseIdx) {
       const sY = halfExtentsY[idA] + halfExtentsY[idB];
       const sZ = halfExtentsZ[idA] + halfExtentsZ[idB];
       
-      // AABB overlap check
+      // AABB overlap check for Y and Z (X is implicitly overlapping or very close)
       if (Math.abs(dX) < sX && Math.abs(dY) < sY && Math.abs(dZ) < sZ) {
         resolveCollision(idA, idB, pA, pB, dX, dY, dZ, sX, sY, sZ);
       }
