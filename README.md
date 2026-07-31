@@ -84,7 +84,20 @@ export default function ScreenshotGenerator() {
 ### 4. For "Hardcore Graphics Devs" (The Bare-Metal Layer)
 Need raw WebGL2/WebGPU access?
 ```tsx
-import { RawGLPipeline } from '@vibe-gl/core';
+import { RawGLPipeline, useShaderInjector, useMemoryPool } from '@vibe-gl/core';
+
+export default function HardcoreScene() {
+  const { injectVertex, injectFragment } = useShaderInjector();
+  const { allocate } = useMemoryPool({ positions: { count: 1000, itemSize: 3 } });
+  
+  return (
+    <RawGLPipeline
+      onFrame={({ gl }) => {
+        // Raw WebGL2 control
+      }}
+    />
+  );
+}
 ```
 
 ## 🛠 Installation & Setup
