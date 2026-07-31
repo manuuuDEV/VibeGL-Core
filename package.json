@@ -1,0 +1,30 @@
+{
+  "name": "vibe-gl-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "release": "pnpm build && pnpm test && changeset publish",
+    "prepare": "pnpm build"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.160.0",
+    "tsup": "^8.5.1",
+    "turbo": "^2.10.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "three-stdlib": "^2.36.1"
+  }
+}

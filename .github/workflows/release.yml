@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Package source code
+        run: |
+          git archive --format=tar.gz --prefix=vibe-gl-core-${{ github.event.release.tag_name }}/ -o vibe-gl-core-${{ github.event.release.tag_name }}.tar.gz ${{ github.event.release.tag_name }}
+          git archive --format=zip --prefix=vibe-gl-core-${{ github.event.release.tag_name }}/ -o vibe-gl-core-${{ github.event.release.tag_name }}.zip ${{ github.event.release.tag_name }}
+
+      - name: Build standalone UMD bundles
+        run: |
+          mkdir -p dist/umd
+          cp packages/core/dist/index.global.js dist/umd/vibe-gl-core.global.js
+          cp packages/math-utils/dist/index.global.js dist/umd/vibe-gl-math-utils.global.js
+          ls -la dist/umd/
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            vibe-gl-core-${{ github.event.release.tag_name }}.tar.gz
+            vibe-gl-core-${{ github.event.release.tag_name }}.zip
+            dist/umd/vibe-gl-core.global.js
+            dist/umd/vibe-gl-math-utils.global.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        run: |
+          cd packages/core && npm publish --access public
+          cd ../math-utils && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: build-and-release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build docs
+        run: |
+          cd apps/docs
+          pnpm build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: apps/docs/dist
