@@ -57,6 +57,7 @@ export default function DynamicScene() {
   );
 }
 ```
+> **Note:** `useVibeCoding` is an early-stage API. Currently only `type: 'sphere'` is supported in the schema; other shapes are silently skipped. More primitive types are planned.
 
 ### 3. The Imperative Bridge (onReady API)
 Need a screenshot, raw camera access, or custom rendering logic? The `onReady` callback exposes the core engine directly:
