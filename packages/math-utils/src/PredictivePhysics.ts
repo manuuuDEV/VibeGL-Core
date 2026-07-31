@@ -11,6 +11,8 @@
 // TYPES (formerly from physics.worker.ts)
 // ============================================
 
+import { workerCode } from './worker/workerSetup';
+
 /** Physics body configuration for initialization */
 export interface PhysicsBodyConfig {
   position: [number, number, number];
@@ -164,6 +166,7 @@ export class PredictivePhysics {
 
     // Check for SharedArrayBuffer support
     if (typeof SharedArrayBuffer === 'undefined') {
+      console.error('[PredictivePhysics] SharedArrayBuffer is undefined. Ensure that Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers are set in your server.');
       throw new Error('SharedArrayBuffer not supported. Cross-origin isolation required.');
     }
 
@@ -207,130 +210,6 @@ export class PredictivePhysics {
    * Create the physics worker
    */
   private createWorker(): Worker {
-    const workerCode = `
-      // Inlined worker code for self-contained deployment
-      // 100% Lock-Free Atomics Ring Buffer Rewrite
-      const FRAME_BUFFER_COUNT = 4;
-      const MAX_BODIES = 10000;
-      const BODY_STRIDE = 13;
-      const META = {
-        WRITE_INDEX: 0, READ_INDEX: 4, BODY_COUNT: 8, TIME_STEP: 12,
-        GRAVITY_X: 16, GRAVITY_Y: 20, GRAVITY_Z: 24, FRAME_TIME: 28,
-        SIMULATION_TIME: 36, LOCK: 44, VERSION: 48
-      };
-      
-      let buffer = null;
-      let views = null;
-      let running = false;
-      let timer = null;
-      let lastTime = 0;
-      
-      function initSharedMemory(buf) {
-        buffer = buf;
-        const f32 = new Float32Array(buf);
-        const i32 = new Int32Array(buf);
-        const offset = 256;
-        
-        views = {
-          pos: new Float32Array(buf, (offset + 0 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES * 3),
-          vel: new Float32Array(buf, (offset + 1 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES * 3),
-          amin: new Float32Array(buf, (offset + 2 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES * 3),
-          amax: new Float32Array(buf, (offset + 3 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES * 3),
-          active: new Int32Array(buf, (offset + 4 * MAX_BODIES * 3) * 4, FRAME_BUFFER_COUNT * MAX_BODIES),
-          meta: i32,
-          metaF32: f32,
-        };
-        
-        Atomics.store(views.meta, META.WRITE_INDEX, 0);
-        Atomics.store(views.meta, META.READ_INDEX, 0);
-        Atomics.store(views.meta, META.BODY_COUNT, 0);
-        views.metaF32[META.TIME_STEP/4] = 1/60;
-        views.metaF32[META.GRAVITY_X/4] = 0; 
-        views.metaF32[META.GRAVITY_Y/4] = -9.81; 
-        views.metaF32[META.GRAVITY_Z/4] = 0;
-        Atomics.store(views.meta, META.VERSION, 1);
-        
-        postMessage({ type: 'READY' });
-      }
-      
-      // True Lock-Free Simulate
-      function simulate() {
-        if (!views) return;
-        
-        const count = Atomics.load(views.meta, META.BODY_COUNT);
-        const dt = views.metaF32[META.TIME_STEP/4];
-        const gx = views.metaF32[META.GRAVITY_X/4], gy = views.metaF32[META.GRAVITY_Y/4], gz = views.metaF32[META.GRAVITY_Z/4];
-        
-        const wi = Atomics.load(views.meta, META.WRITE_INDEX);
-        const nwi = (wi + 1) % FRAME_BUFFER_COUNT;
-        
-        // Zero object allocation loop
-        for (let i = 0; i < count; i++) {
-          if (views.active[wi * MAX_BODIES + i] === 0) continue;
-          
-          const base = wi * MAX_BODIES * 3 + i * 3;
-          let px = views.pos[base], py = views.pos[base+1], pz = views.pos[base+2];
-          let vx = views.vel[base], vy = views.vel[base+1], vz = views.vel[base+2];
-          const hx = (views.amax[base] - views.amin[base]) / 2;
-          const hy = (views.amax[base+1] - views.amin[base+1]) / 2;
-          const hz = (views.amax[base+2] - views.amin[base+2]) / 2;
-          
-          vx += gx * dt; vy += gy * dt; vz += gz * dt;
-          const nx = px + vx * dt;
-          let ny = py + vy * dt;
-          const nz = pz + vz * dt;
-          
-          if (ny - hy < 0) { ny = hy; vy = -vy * 0.8; }
-          
-          const tbase = nwi * MAX_BODIES * 3 + i * 3;
-          views.pos[tbase] = nx; views.pos[tbase+1] = ny; views.pos[tbase+2] = nz;
-          views.vel[tbase] = vx; views.vel[tbase+1] = vy; views.vel[tbase+2] = vz;
-          views.amin[tbase] = nx - hx; views.amin[tbase+1] = ny - hy; views.amin[tbase+2] = nz - hz;
-          views.amax[tbase] = nx + hx; views.amax[tbase+1] = ny + hy; views.amax[tbase+2] = nz + hz;
-          views.active[nwi * MAX_BODIES + i] = 1;
-        }
-        
-        Atomics.store(views.meta, META.WRITE_INDEX, nwi);
-        Atomics.add(views.meta, META.VERSION, 1);
-        Atomics.notify(views.meta, META.WRITE_INDEX, 1);
-        
-        postMessage({ type: 'FRAME_READY', frameIndex: nwi, bodyCount: count, timestamp: performance.now() });
-      }
-      
-      function loop() {
-        if (!running) return;
-        simulate();
-        const now = performance.now();
-        const elapsed = now - lastTime;
-        const delay = Math.max(0, 1000/60 - elapsed);
-        lastTime = now;
-        timer = setTimeout(loop, delay);
-      }
-      
-      self.onmessage = (e) => {
-              const { type, payload } = e.data;
-              switch (type) {
-                case 'INIT': initSharedMemory(payload.buffer); break;
-                case 'ADD_BODY': if (views) { const c = Atomics.load(views.meta, META.BODY_COUNT); if (c < MAX_BODIES) { writeBody(0, c, payload); Atomics.add(views.meta, META.BODY_COUNT, 1); postMessage({type:'BODY_ADDED',id:c}); } } break;
-                case 'REMOVE_BODY': if (views) { for(let f=0;f<FRAME_BUFFER_COUNT;f++) views.active[f*MAX_BODIES+payload.id]=0; postMessage({type:'BODY_REMOVED',id:payload.id}); } break;
-                case 'UPDATE_BODY': if (views) { writeBody(0, payload.id, payload); } break;
-                case 'SET_GRAVITY': if (views) { views.metaF32[META.GRAVITY_X/4]=payload.x??0; views.metaF32[META.GRAVITY_Y/4]=payload.y??-9.81; views.metaF32[META.GRAVITY_Z/4]=payload.z??0; } break;
-                case 'SET_TIME_STEP': if (views) views.metaF32[META.TIME_STEP/4]=payload.timeStep; break;
-                case 'START': if (!running) { running=true; lastTime=performance.now(); loop(); } break;
-                case 'STOP': running=false; if(timer) clearTimeout(timer); break;
-              }
-            };
-      
-      function writeBody(frame, idx, body) {
-        const base = frame * MAX_BODIES * 3 + idx * 3;
-        views.pos[base]=body.position[0]; views.pos[base+1]=body.position[1]; views.pos[base+2]=body.position[2];
-        views.vel[base]=body.velocity[0]; views.vel[base+1]=body.velocity[1]; views.vel[base+2]=body.velocity[2];
-        views.amin[base]=body.position[0]-body.aabbHalfExtents[0]; views.amin[base+1]=body.position[1]-body.aabbHalfExtents[1]; views.amin[base+2]=body.position[2]-body.aabbHalfExtents[2];
-        views.amax[base]=body.position[0]+body.aabbHalfExtents[0]; views.amax[base+1]=body.position[1]+body.aabbHalfExtents[1]; views.amax[base+2]=body.position[2]+body.aabbHalfExtents[2];
-        views.active[frame*MAX_BODIES+idx]=1;
-      }
-    `;
-    
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const worker = new Worker(URL.createObjectURL(blob));
     

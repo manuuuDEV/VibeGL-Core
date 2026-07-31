@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useState } from "react";
 import { Group } from "three";
-import { createPhysicsWorker } from "@vibe-gl/math-utils";
+import { workerCode } from "@vibe-gl/math-utils";
 
 export interface PhysicsBodyProps {
   children: React.ReactNode;
@@ -16,10 +16,11 @@ export function PhysicsBody({ children, mass = 1, initialPosition = [0, 0, 0] }:
   const [pos] = useState(initialPosition);
 
   useEffect(() => {
-    workerRef.current = createPhysicsWorker();
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    workerRef.current = new Worker(URL.createObjectURL(blob));
 
     workerRef.current.onmessage = (e) => {
-      if (ref.current) {
+      if (ref.current && e.data.newPosition) {
         ref.current.position.set(e.data.newPosition[0], e.data.newPosition[1], e.data.newPosition[2]);
       }
     };
