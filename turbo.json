@@ -6,6 +6,7 @@
       "outputs": ["dist/**", ".next/**"]
     },
     "docs#build": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "dev": {
