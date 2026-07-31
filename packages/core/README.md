@@ -14,12 +14,15 @@ npm install @vibe-gl/core
 import { VibeCanvas, useVibeCoding } from '@vibe-gl/core';
 
 function App() {
-  const schema = { type: 'sphere' }; // Currently only 'sphere' is supported
+  const schema = { 
+    objects: [{ id: '1', type: 'sphere', color: 'red', scale: 2 }], 
+    canvas: { environment: 'space' } 
+  };
   const { SceneComponents, canvasConfig } = useVibeCoding(schema);
 
   return (
     <VibeCanvas config={canvasConfig}>
-      <SceneComponents />
+      {SceneComponents}
     </VibeCanvas>
   );
 }
