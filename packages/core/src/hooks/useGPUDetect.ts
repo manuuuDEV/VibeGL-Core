@@ -1,28 +1,29 @@
 import { useState, useEffect } from 'react';
 
 export function useGPUDetect() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [hasWebGL, setHasWebGL] = useState(true);
-  const [useWebGPU, setUseWebGPU] = useState(false);
+  const [gpuInfo, setGpuInfo] = useState({
+    isMounted: false,
+    hasWebGL: false,
+    useWebGPU: false,
+  });
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && (navigator as any).gpu) {
-      setUseWebGPU(true);
-      setHasWebGL(true);
-    } else {
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        setHasWebGL(!!gl);
-      } catch {
-        setHasWebGL(false);
-      }
+    // Disable WebGPU for now as Three.js r160 WebGPURenderer is too unstable
+    const useWebGPU = false;
+    
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      
+      setGpuInfo({
+        isMounted: true,
+        hasWebGL: !!gl,
+        useWebGPU,
+      });
+    } catch (e) {
+      setGpuInfo({ isMounted: true, hasWebGL: false, useWebGPU: false });
     }
   }, []);
 
-  return { isMounted, hasWebGL, useWebGPU };
+  return gpuInfo;
 }

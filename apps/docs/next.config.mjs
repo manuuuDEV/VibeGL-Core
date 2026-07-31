@@ -6,6 +6,11 @@ const withNextra = nextra({
 })
  
 export default withNextra({
+  output: 'export',
+  basePath: process.env.GITHUB_ACTIONS ? '/VibeGL-Core' : '',
+  images: {
+    unoptimized: true
+  },
   reactStrictMode: true,
   transpilePackages: ['@vibe-gl/core', '@vibe-gl/math-utils'],
   async headers() {

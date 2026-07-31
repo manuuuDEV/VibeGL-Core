@@ -21,7 +21,6 @@ import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.j
 import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { 
   Environment, 
-  SoftShadows, 
   ContactShadows,
 } from '@react-three/drei';
 import { 
@@ -206,11 +205,6 @@ export function VibeCanvas({
         }}
       >
                 <VibeCanvasAPIHelper refs={threeRefs} />
-        <SoftShadows 
-          size={lighting.shadowResolution} 
-          samples={16} 
-          focus={0.5} 
-        />
         <ambientLight intensity={lighting.ambientIntensity} />
         <directionalLight
           castShadow={lighting.shadows}
@@ -225,7 +219,7 @@ export function VibeCanvas({
           shadow-camera-bottom={-20}
         />
         <Environment preset={environmentPreset as any} />
-        <ContactShadows opacity={0.3} scale={20} blur={2} far={10} />
+        {!useWebGPU && <ContactShadows opacity={0.3} scale={20} blur={2} far={10} />}
         
         {mergedConfig.particles && mergedConfig.particles.count! > 0 && (
           <VibeParticles config={mergedConfig.particles} isWebGPU={useWebGPU} />

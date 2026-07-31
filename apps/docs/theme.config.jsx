@@ -1,3 +1,5 @@
+import React from 'react';
+
 export default {
   logo: <span>⚡ VibeGL-Core</span>,
   project: {

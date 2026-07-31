@@ -1,16 +1,59 @@
+import LivePreview from '../components/LivePreview'
+import AdvancedPreview from '../components/AdvancedPreview'
+import PerformanceComparison from '../components/PerformanceComparison'
+
 # VibeGL-Core
 
 Benvenuto nella documentazione ufficiale di **VibeGL-Core**, il motore 3D per React senza codice boilerplate, progettato per l'AI Vibe Coding.
 
 ## Che cos'è VibeGL?
 
-VibeGL è una libreria basata su React Three Fiber che ti permette di generare scene 3D ultra-performanti (WebGL2 & WebGPU) in pochissime righe di codice. A differenza di altre librerie, VibeGL integra un motore fisico lock-free su Web Worker e ti fornisce effetti di post-processing (bloom, aberrazione cromatica, grana della pellicola) automaticamente e senza sforzo.
+VibeGL è una libreria basata su React Three Fiber che ti permette di generare scene 3D ultra-performanti (WebGL2 & WebGPU) in pochissime righe di codice. A differenza di altre librerie, VibeGL integra un motore fisico lock-free su Web Worker e sistemi di particelle ottimizzati che bypassano il costoso Virtual DOM di React.
 
-### Vantaggi Principali
+### 1. La Differenza: Reale Test di Performance
 
-- 🚀 **Zero Boilerplate**: Non devi configurare la camera, il renderer o le luci da zero. Tutto è gestito tramite un semplice oggetto JSON.
-- ⚡ **Lock-Free Physics**: Simulazioni fisiche a 120FPS senza bloccare il thread principale, grazie a `SharedArrayBuffer`.
+Molti sviluppatori usando React Three Fiber "classico" creano migliaia di tag `<mesh>` finendo per bloccare completamente il browser. VibeGL risolve questo problema strutturalmente.
+
+Mettiamo alla prova il motore: clicca sul pulsante rosso per generare 15.000 oggetti identici in puro stile React, e guarda il frame rate collassare. Poi, clicca sul pulsante blu di VibeGL: invece di 15.000 gestirà ben **100.000 oggetti** mantenendo la scena perfettamente fluida a 60 FPS.
+
+<PerformanceComparison />
+
+### 2. Codice Essenziale, Risultato Immediato
+
+Nessuna configurazione complessa di camere, luci o WebGL renderer:
+
+```tsx
+import { VibeCanvas } from '@vibe-gl/core';
+
+export default function BasicScene() {
+  return (
+    <VibeCanvas 
+      config={{
+        environment: 'cyberpunk-neon',
+        physics: 'earth',
+        postProcessing: { bloom: 1.5, chromaticAberration: 0.05 }
+      }} 
+    />
+  );
+}
+```
+
+Ed ecco il risultato **reale** e interattivo:
+
+<LivePreview />
+
+### 3. Effetti e Motore Fisico in tempo reale
+
+Il vero potere di VibeGL è la reattività del suo ecosistema. Puoi cambiare gravità, illuminazione e filtri in tempo reale, senza far "laggare" il thread principale, poiché la fisica è isolata su un Worker (lock-free).
+
+Prova tu stesso a cambiare l'ambiente e la gravità qui sotto:
+
+<AdvancedPreview />
+
+## Vantaggi Principali
+
+- 🚀 **Zero Boilerplate**: Non devi configurare la camera, il renderer o le luci da zero.
+- ⚡ **Prestazioni Estreme**: 100.000 particelle e fisica a 120FPS senza bloccare il thread principale (usando `SharedArrayBuffer` e istanziazione massiva).
 - 🤖 **AI Vibe Coding**: Genera ambienti 3D in modo dinamico a partire da schemi generati da IA usando `useVibeCoding`.
-- 📦 **Modulare e Leggero**: Utilizza solo ciò di cui hai bisogno. I nostri hook sono completamente "tree-shakable".
 
 Passa alla sezione [Getting Started](/getting-started) per iniziare subito a creare il tuo primo mondo 3D!
