@@ -64,6 +64,7 @@
  * Natural-language JSON configuration entry point.
  * Provides automatic LOD, frustum culling, physics, and post-processing.
  */
+export * from './types';
 export * from './components/VibeCanvas';
 export * from './hooks/useVibeCoding';
 

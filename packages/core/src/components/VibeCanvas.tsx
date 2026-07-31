@@ -24,61 +24,15 @@ import {
 } from '@vibe-gl/math-utils';
 
 // Extend Three.js for React Three Fiber
+import { VibeConfig } from '../types';
+import { deepMerge } from '../utils/configMerge';
+
 extend(THREE);
 
 // ============================================
 // TYPES - VIBE CODER API
 // ============================================
 
-export interface VibeConfig {
-  environment?: 'studio' | 'cyberpunk-neon' | 'space' | 'nature' | 'minimal' | 'void';
-  physics?: 'none' | 'low-gravity' | 'earth' | 'moon' | 'jupiter' | 'zero-g' | 'fluid';
-  particles?: {
-    count?: number;
-    behavior?: 'float' | 'swarm' | 'explode' | 'trail' | 'morph' | 'attract';
-    color?: 'white' | 'neon' | 'fire' | 'water' | 'galaxy' | 'custom';
-    customColors?: string[];
-    size?: [number, number];
-    life?: number;
-  };
-  postProcessing?: {
-    bloom?: number;
-    vignette?: number;
-    grain?: number;
-    chromaticAberration?: number;
-    lut?: string;
-  };
-  camera?: {
-    type?: 'perspective' | 'orthographic';
-    position?: [number, number, number];
-    fov?: number;
-    near?: number;
-    far?: number;
-    controls?: boolean;
-    autoRotate?: boolean;
-    autoRotateSpeed?: number;
-  };
-  lighting?: {
-    preset?: 'studio' | 'dramatic' | 'natural' | 'neon' | 'minimal';
-    ambientIntensity?: number;
-    directionalIntensity?: number;
-    directionalPosition?: [number, number, number];
-    shadows?: boolean;
-    shadowResolution?: number;
-  };
-  performance?: {
-    targetFPS?: 30 | 60 | 120;
-    autoLOD?: boolean;
-    frustumCulling?: boolean;
-    maxParticles?: number;
-    dpr?: [number, number];
-  };
-  customShader?: {
-    vertex?: string;
-    fragment?: string;
-    uniforms?: Record<string, any>;
-  };
-}
 
 const DEFAULT_VIBE_CONFIG: Required<VibeConfig> = {
   environment: 'studio',
@@ -737,28 +691,3 @@ function AutoRotate({ speed }: { speed?: number }) {
 }
 
 // ============================================
-// ============================================
-// UTILITY: Deep Merge
-// ============================================
-
-function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-  const result = { ...target } as T;
-  for (const key of Object.keys(source) as (keyof T)[]) {
-    const sourceValue = source[key];
-    const targetValue = target[key];
-    if (sourceValue === undefined) continue;
-    if (
-      sourceValue !== null &&
-      typeof sourceValue === 'object' &&
-      !Array.isArray(sourceValue) &&
-      targetValue !== null &&
-      typeof targetValue === 'object' &&
-      !Array.isArray(targetValue)
-    ) {
-      (result as any)[key] = deepMerge(targetValue, sourceValue);
-    } else {
-      (result as any)[key] = sourceValue;
-    }
-  }
-  return result;
-}
