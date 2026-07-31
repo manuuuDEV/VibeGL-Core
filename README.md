@@ -11,8 +11,9 @@
 ![WebGPU](https://img.shields.io/badge/WebGPU-Ready-green)
 ![Next.js](https://img.shields.io/badge/Next.js-App_Router_Ready-black)
 
-## 🚀 What's New in v1.1.0 (Evolution Update)
+## 🚀 What's New in v1.1.1 (Modular Architecture Update)
 
+* **Modular Hooks Architecture**: Completely refactored `VibeCanvas` into isolated hooks (`useGPUDetect`, `usePhysicsEngine`, `useVibeAPI`) for drastically reduced bundle size and zero side-effects.
 * **WebGPU Support**: WebGPU rendering support via Three.js WebGPURenderer, with automatic fallback to WebGL2/CSS3D. (TSL Compute Shaders: experimental, currently disabled pending upstream Three.js compatibility fixes).
 * **Next.js 14+ App Router Ready (RSC compatible via dynamic import)**: Fully optimized for React Server Components with seamless SSR hydration.
 * **True Lock-Free Atomics**: Completely rewritten SharedArrayBuffer (SAB) physics synchronization for zero GC micro-stutters and deterministic frame prediction!

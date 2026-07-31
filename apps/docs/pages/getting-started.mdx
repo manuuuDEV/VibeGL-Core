@@ -1,0 +1,60 @@
+# Getting Started
+
+In questa sezione scoprirai come aggiungere VibeGL al tuo progetto React o Next.js in pochi secondi.
+
+## 1. Installazione
+
+Installa `@vibe-gl/core` e le sue "peer dependencies":
+
+```bash
+npm install @vibe-gl/core @vibe-gl/math-utils three @react-three/fiber
+```
+
+## 2. Requisiti di Sicurezza (Importante)
+
+VibeGL utilizza `SharedArrayBuffer` per far comunicare il thread di rendering col thread del motore fisico senza interruzioni. Perché i browser moderni permettano questo, devi servire la tua app con specifici header di sicurezza HTTP ("Cross-Origin Isolation").
+
+Se usi **Next.js**, apri il tuo file `next.config.mjs` e aggiungi:
+
+```js filename="next.config.mjs"
+export default {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+        ],
+      },
+    ];
+  },
+};
+```
+
+## 3. Il tuo primo VibeCanvas
+
+Ora puoi inserire la tua prima scena 3D. Basta usare il componente `<VibeCanvas>`.
+
+```tsx filename="App.tsx"
+import { VibeCanvas } from '@vibe-gl/core';
+
+export default function App() {
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <VibeCanvas 
+        config={{
+          environment: 'cyberpunk-neon',
+          physics: 'low-gravity',
+          postProcessing: {
+            bloom: 0.5,
+            chromaticAberration: 0.02
+          }
+        }} 
+      />
+    </div>
+  );
+}
+```
+
+Tutto qui! Hai appena creato una scena interattiva. Consulta l'[API Reference](/api-reference) per scoprire cos'altro puoi fare.

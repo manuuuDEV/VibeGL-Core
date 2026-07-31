@@ -1,0 +1,53 @@
+# API Reference
+
+Di seguito un riepilogo delle API pubbliche di `@vibe-gl/core`.
+
+## `VibeCanvas`
+
+Il componente principale per renderizzare una scena 3D. Accetta una singola prop `config` per modificare il comportamento generale e un callback opzionale `onReady` per interagire direttamente con la scena.
+
+```tsx
+<VibeCanvas 
+  config={{ environment: 'cyberpunk-neon' }} 
+  onReady={(api) => console.log('Ready!', api)}
+>
+  {/* I tuoi componenti React o Three.js */}
+</VibeCanvas>
+```
+
+### Proprietà di `VibeConfig`
+
+| Proprietà | Tipo | Default | Descrizione |
+|---|---|---|---|
+| `environment` | `'space' \| 'cyberpunk-neon' \| 'studio'` | `'studio'` | Lo stile ambientale (sfondo, luci, nebbia). |
+| `physics` | `'earth' \| 'low-gravity' \| 'none'` | `'earth'` | Il livello di gravità per la simulazione fisica. |
+| `postProcessing` | `Object` | *undefined* | Regola gli effetti visivi. |
+
+#### `postProcessing`
+
+- `bloom` (number): Intensità dell'effetto alone di luce.
+- `chromaticAberration` (number): Sfalsamento dei canali RGB per un effetto glitch.
+- `vignette` (number): Oscuramento dei bordi.
+- `grain` (number): Effetto grana della pellicola.
+
+## L'oggetto `VibeCanvasAPI`
+
+Quando passi una funzione alla prop `onReady`, essa riceve l'oggetto API.
+
+- `getScene()`: Ritorna l'oggetto `THREE.Scene`.
+- `getCamera()`: Ritorna la telecamera attiva.
+- `getRenderer()`: Ritorna il renderer WebGL (o WebGPU).
+- `screenshot()`: Ritorna una Promise che si risolve in una stringa base64 dell'immagine renderizzata.
+- `addObject(config)`: Aggiunge un oggetto fisico al motore (es. `{ type: 'box', mass: 10 }`).
+
+## `useVibeCoding`
+
+Un hook utile se si vuole caricare lo stato della scena dinamicamente da un JSON.
+Accetta uno schema e restituisce sia i componenti React pronti da renderizzare (`SceneComponents`), sia la configurazione da passare al canvas (`canvasConfig`).
+
+```tsx
+const { SceneComponents, canvasConfig } = useVibeCoding({
+  canvas: { environment: 'space' },
+  objects: [ { id: 'obj-1', type: 'sphere', color: 'blue' } ]
+});
+```
