@@ -1,6 +1,6 @@
 {
   "name": "@vibe-gl/core",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
@@ -49,15 +49,19 @@
     "three": "^0.160.1"
   },
   "peerDependencies": {
+    "@react-three/fiber": ">=8.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "three": ">=0.160.0",
-    "@react-three/fiber": ">=8.0.0"
+    "three": ">=0.160.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.160.0",
+    "jsdom": "^30.0.1",
     "tsup": "^8.0.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

@@ -1,13 +1,20 @@
 'use client';
 "use client";
 import React, { 
-  useRef, 
-  useEffect, 
+    useEffect, 
   useMemo, 
   useState
 } from 'react';
 import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useVibeAPI } from '../hooks/useVibeAPI';
+import { usePhysicsEngine } from '../hooks/usePhysicsEngine';
+import { useGPUDetect } from '../hooks/useGPUDetect';
+import { CSS3DFallback } from './CSS3DFallback';
+import { LoadingFallback } from './LoadingFallback';
+import { PostProcessingEffect } from './VibePostProcessing';
+
+
 // @ts-ignore
 import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
 // @ts-ignore
@@ -18,8 +25,6 @@ import {
   ContactShadows,
 } from '@react-three/drei';
 import { 
-  PredictivePhysics, 
-  createPredictivePhysics, 
   PhysicsBodyHandle
 } from '@vibe-gl/math-utils';
 
@@ -90,114 +95,6 @@ const DEFAULT_VIBE_CONFIG: Required<VibeConfig> = {
 // ============================================
 
 
-// ============================================
-// POST-PROCESSING EFFECTS (Screen-Space Shaders)
-// ============================================
-
-interface PostProcessingEffectProps {
-  config: Required<VibeConfig>['postProcessing'];
-}
-
-function PostProcessingEffect({ config }: PostProcessingEffectProps) {
-  const composerRef = useRef<{
-   scene: THREE.Scene;
-   camera: THREE.OrthographicCamera;
-   material: THREE.ShaderMaterial;
-  } | null>(null);
-
-  useEffect(() => {
-   const ppScene = new THREE.Scene();
-   const ppCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-   ppCamera.position.z = 1;
-
-   const material = new THREE.ShaderMaterial({
-     uniforms: {
-       tDiffuse: { value: null },
-       uTime: { value: 0 },
-       uBloomIntensity: { value: 0 },
-       uVignetteIntensity: { value: 0 },
-       uGrainIntensity: { value: 0 },
-       uChromaticIntensity: { value: 0 },
-     },
-     vertexShader: /* glsl */ `
-       varying vec2 vUv;
-       void main() {
-         vUv = uv;
-         gl_Position = vec4(position, 1.0);
-       }
-     `,
-     fragmentShader: /* glsl */ `
-       varying vec2 vUv;
-       uniform sampler2D tDiffuse;
-       uniform float uTime;
-       uniform float uBloomIntensity;
-       uniform float uVignetteIntensity;
-       uniform float uGrainIntensity;
-       uniform float uChromaticIntensity;
-
-       float rand(vec2 uv) {
-         return fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-       }
-
-       void main() {
-         vec4 baseColor = texture2D(tDiffuse, vUv);
-         vec3 color = baseColor.rgb;
-
-         // Chromatic Aberration
-         if (uChromaticIntensity > 0.0) {
-           float ca = uChromaticIntensity * 4.0 / 1024.0;
-           color.r = texture2D(tDiffuse, vUv + vec2(ca, 0.0)).r;
-           color.b = texture2D(tDiffuse, vUv - vec2(ca, 0.0)).b;
-         }
-
-         // Vignette
-         if (uVignetteIntensity > 0.0) {
-           vec2 uvCenter = vUv - 0.5;
-           float vignette = 1.0 - dot(uvCenter, uvCenter) * uVignetteIntensity;
-           color *= vignette;
-         }
-
-         // Film Grain
-         if (uGrainIntensity > 0.0) {
-           float noise = (rand(vUv + fract(uTime * 100.0)) - 0.5) * uGrainIntensity;
-           color += noise;
-         }
-
-         // Simple bloom-like brighten
-         if (uBloomIntensity > 0.0) {
-           float brightness = dot(color, vec3(0.299, 0.587, 0.114));
-           color += color * brightness * uBloomIntensity;
-         }
-
-         gl_FragColor = vec4(color, baseColor.a);
-       }
-     `,
-     transparent: true,
-   });
-
-   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-   ppScene.add(quad);
-   composerRef.current = { scene: ppScene, camera: ppCamera, material };
-
-   return () => {
-     material.dispose();
-     quad.geometry.dispose();
-   };
-  }, []);
-
-  useFrame(() => {
-   const comp = composerRef.current;
-   if (!comp) return;
-    
-   comp.material.uniforms.uTime!.value = performance.now() * 0.001;
-   comp.material.uniforms.uBloomIntensity!.value = (config.bloom ?? 0) / 10;
-   comp.material.uniforms.uVignetteIntensity!.value = (config.vignette ?? 0) / 5;
-   comp.material.uniforms.uGrainIntensity!.value = (config.grain ?? 0) / 10;
-   comp.material.uniforms.uChromaticIntensity!.value = config.chromaticAberration ?? 0;
-  });
-
-  return null;
-}
 
 // ============================================
 // MAIN VIBE CANVAS COMPONENT
@@ -237,150 +134,17 @@ export function VibeCanvas({
     deepMerge(DEFAULT_VIBE_CONFIG, config) as Required<VibeConfig>
   );
   
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
+  const { isMounted, hasWebGL, useWebGPU } = useGPUDetect();
+  
+  const physicsRef = usePhysicsEngine(mergedConfig.physics);
+  const { canvasRef, threeRefs } = useVibeAPI({
+    setMergedConfig,
+    physicsRef,
+    onReady,
+    isMounted,
+  });
 
-  const [hasWebGL, setHasWebGL] = useState(true);
-  const [useWebGPU, setUseWebGPU] = useState(false);
-  
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const apiRef = useRef<VibeCanvasAPI | null>(null);
-  const threeRefs = useRef<{scene?: THREE.Scene, camera?: THREE.Camera, gl?: THREE.WebGLRenderer}>({});
-  const physicsRef = useRef<PredictivePhysics | null>(null);
-  const sceneObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
-  
-  useEffect(() => {
-    if (mergedConfig.physics !== 'none') {
-      physicsRef.current = createPredictivePhysics();
-      
-      const gravityMap: Record<string, [number, number, number]> = {
-        'low-gravity': [0, -1.62, 0],
-        'earth': [0, -9.81, 0],
-        'moon': [0, -1.62, 0],
-        'jupiter': [0, -24.79, 0],
-        'zero-g': [0, 0, 0],
-        'fluid': [0, -9.81, 0],
-      };
-      
-      if (mergedConfig.physics && gravityMap[mergedConfig.physics]) {
-        physicsRef.current.setGravity(...gravityMap[mergedConfig.physics] as [number, number, number]);
-      }
-      
-      physicsRef.current.start();
-    }
-    
-    return () => {
-      physicsRef.current?.dispose();
-      physicsRef.current = null;
-    };
-  }, [mergedConfig.physics]);
-  
-  useEffect(() => {
-    if ((navigator as any).gpu) {
-      setUseWebGPU(true);
-      setHasWebGL(true);
-    } else {
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        setHasWebGL(!!gl);
-      } catch {
-        setHasWebGL(false);
-      }
-    }
-  }, []);
-  
-  if (!isMounted) {
-    return (
-      <div className={className} style={{ ...style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#fff', animation: 'spin 1s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
 
-  if (!hasWebGL && !useWebGPU) {
-    return (
-      <div 
-        className={className} 
-        style={{ ...style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      >
-        {fallback || (
-          <div style={{ perspective: '1000px', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a' }}>
-            <div style={{ 
-              width: 100, height: 100, position: 'relative', transformStyle: 'preserve-3d', animation: 'rotate3d 5s linear infinite' 
-            }}>
-              <style>{`
-                @keyframes rotate3d { from { transform: rotateX(0deg) rotateY(0deg); } to { transform: rotateX(360deg) rotateY(360deg); } }
-                .css3d-face { position: absolute; width: 100%; height: 100%; border: 2px solid #0ff; background: rgba(0, 255, 255, 0.1); box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff; }
-                .css3d-front  { transform: translateZ(50px); }
-                .css3d-back   { transform: rotateY(180deg) translateZ(50px); }
-                .css3d-right  { transform: rotateY(90deg) translateZ(50px); }
-                .css3d-left   { transform: rotateY(-90deg) translateZ(50px); }
-                .css3d-top    { transform: rotateX(90deg) translateZ(50px); }
-                .css3d-bottom { transform: rotateX(-90deg) translateZ(50px); }
-              `}</style>
-              <div className="css3d-face css3d-front"></div>
-              <div className="css3d-face css3d-back"></div>
-              <div className="css3d-face css3d-right"></div>
-              <div className="css3d-face css3d-left"></div>
-              <div className="css3d-face css3d-top"></div>
-              <div className="css3d-face css3d-bottom"></div>
-            </div>
-            <div style={{ position: 'absolute', bottom: 20, color: '#0ff', fontFamily: 'monospace', textShadow: '0 0 5px #0ff', whiteSpace: 'nowrap', left: '50%', transform: 'translateX(-50%)' }}>
-              WebGPU/WebGL Failed - Rendering CSS 3D Fallback
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-  const api = useMemo((): VibeCanvasAPI => ({
-    setConfig: (newConfig: Partial<VibeConfig>) => {
-        setMergedConfig(prev => deepMerge(prev, newConfig) as Required<VibeConfig>);
-    },
-    addObject: (object: THREE.Object3D) => {
-      const id = `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      sceneObjectsRef.current.set(id, object);
-    },
-    removeObject: (object: THREE.Object3D) => {
-      for (const [id, obj] of sceneObjectsRef.current) {
-        if (obj === object) {
-          sceneObjectsRef.current.delete(id);
-          break;
-        }
-      }
-    },
-    getScene: () => threeRefs.current.scene || null,
-    getCamera: () => threeRefs.current.camera || null,
-    getRenderer: () => threeRefs.current.gl || null,
-    screenshot: async (options) => {
-      const gl = threeRefs.current.gl;
-      if (!gl) return '';
-      return gl.domElement.toDataURL(options?.type || 'image/png', options?.encoderOptions);
-    },
-    startPhysics: () => physicsRef.current?.start(),
-    stopPhysics: () => physicsRef.current?.stop(),
-    addPhysicsBody: (config) => {
-      if (!physicsRef.current) throw new Error('Physics not initialized');
-      return physicsRef.current.addBody({
-        mass: config.mass,
-        position: config.position,
-              velocity: [0, 0, 0],
-              aabbHalfExtents: [config.size[0]/2, config.size[1]/2, config.size[2]/2],
-              restitution: 0.5,
-              friction: 0.3,
-              isStatic: config.mass === 0,
-            });
-    },
-  }), []);
-  
-  useEffect(() => {
-    apiRef.current = api;
-    onReady?.(api);
-  }, [api, onReady]);
-  
   const environmentPreset = useMemo(() => {
     switch (mergedConfig.environment) {
       case 'cyberpunk-neon': return 'city';
@@ -423,6 +187,10 @@ export function VibeCanvas({
       };
     }, [mergedConfig.lighting]);
   
+  if (!isMounted) return <LoadingFallback className={className} style={style} />;
+
+  if (!hasWebGL && !useWebGPU) return <CSS3DFallback className={className} style={style} fallback={fallback} />;
+
   return (
     <div className={className} style={{ width: '100%', height: '100%', ...style }}>
       <Canvas
