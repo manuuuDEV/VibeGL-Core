@@ -13,13 +13,13 @@
 
 ## 🚀 What's New in v1.1.0 (Evolution Update)
 
-* **WebGPU Support**: Automatic WebGPU rendering with seamless fallback to WebGL2 and CSS3D!
-* **Next.js 15+ & RSC Ready**: Fully optimized for React Server Components with seamless SSR hydration.
+* **WebGPU Support**: WebGPU rendering support via Three.js WebGPURenderer, with automatic fallback to WebGL2/CSS3D. (TSL Compute Shaders: experimental, currently disabled pending upstream Three.js compatibility fixes).
+* **Next.js 14+ App Router Ready (RSC compatible via dynamic import)**: Fully optimized for React Server Components with seamless SSR hydration.
 * **True Lock-Free Atomics**: Completely rewritten SharedArrayBuffer (SAB) physics synchronization for zero GC micro-stutters and deterministic frame prediction!
 
 ## 🧠 The Bifurcated Architecture
 
-VibeGL-Core is built for two distinct personas:
+VibeGL-Core is built for distinct personas:
 
 ### 1. For "Vibe Coders" (The Declarative Magic)
 Just want a beautiful 3D background without learning matrix math? Use our natural-language-like JSON config.
@@ -38,10 +38,52 @@ export default function App() {
 }
 ```
 
-### 2. For "Hardcore Graphics Devs" (The Bare-Metal Layer)
-Need raw WebGL2/WebGPU access and zero-GC memory pools?
+### 2. Dynamic Scene Generation (useVibeCoding)
+Programmatically inject 3D components from JSON schemas (perfect for AI agents or CMS integration):
 ```tsx
-import { RawGLPipeline, useShaderInjector, useMemoryPool } from '@vibe-gl/core';
+import { useVibeCoding, VibeCanvas } from '@vibe-gl/core';
+
+const mySchema = {
+  canvas: { environment: 'space' },
+  objects: [{ id: '1', type: 'sphere', color: 'red', scale: 2 }]
+};
+
+export default function DynamicScene() {
+  const { SceneComponents, canvasConfig } = useVibeCoding(mySchema);
+  return (
+    <VibeCanvas config={canvasConfig}>
+      {SceneComponents}
+    </VibeCanvas>
+  );
+}
+```
+
+### 3. The Imperative Bridge (onReady API)
+Need a screenshot, raw camera access, or custom rendering logic? The `onReady` callback exposes the core engine directly:
+```tsx
+import { VibeCanvas } from '@vibe-gl/core';
+
+export default function ScreenshotGenerator() {
+  return (
+    <VibeCanvas
+      config={{ environment: 'studio' }}
+      onReady={async (api) => {
+        // Take a screenshot instantly when ready
+        const dataUrl = await api.screenshot();
+        console.log("Screenshot ready for download!", dataUrl);
+        
+        // You also have direct access to:
+        // api.getScene(), api.getCamera(), api.getRenderer()
+      }}
+    />
+  );
+}
+```
+
+### 4. For "Hardcore Graphics Devs" (The Bare-Metal Layer)
+Need raw WebGL2/WebGPU access?
+```tsx
+import { RawGLPipeline } from '@vibe-gl/core';
 ```
 
 ## 🛠 Installation & Setup
@@ -91,20 +133,19 @@ export default function Page() {
 }
 ```
 
-
-
 ## 🔬 Predictive Physics Engine (SAB)
 
 ![VibeGL Worker Architecture Engine](./docs/assets/architecture.jpeg)
 
-We run physics at 120FPS on a dedicated Web Worker using `SharedArrayBuffer` (SAB).
+We run purely translational AABB physics at 120FPS on a dedicated Web Worker using `SharedArrayBuffer` (SAB).
 * **Ring Buffer**: Pre-calculates 4 frames ahead.
+* **O(N log N) Broadphase via Sweep and Prune (SAP)**: No naive O(N²) collision checks.
 * **Lock-Free Atomics**: No spin-locks, zero main-thread blocking.
 * **Zero Allocation**: We never instantiate `new THREE.Vector3()` in the render loop.
 
-## 📊 Performance Benchmarks
-* 10,000 physical particles: **119.8 FPS**
-* Memory GC Pauses: **0ms** (Zero allocation)
+## 📊 Performance
+* **Designed for zero-allocation, low-jitter physics simulation.**
+* Memory GC Pauses: **0ms** (Zero allocation pattern in physics loop)
 
 ---
 *Built with ❤️ for the Vibe Coding generation.*
