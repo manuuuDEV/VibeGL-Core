@@ -44,11 +44,6 @@ jobs:
       - name: Build workspace
         run: pnpm run build
         
-      - name: Export static site
-        run: |
-          cd apps/docs
-          pnpm run export
-
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v3
         with:
