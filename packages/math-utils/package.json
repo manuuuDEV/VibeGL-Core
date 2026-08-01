@@ -36,14 +36,14 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "three": "^0.160.1"
+    "three": "^0.185.1"
   },
   "peerDependencies": {
     "three": ">=0.160.0"
   },
   "devDependencies": {
-    "tsup": "^8.0.2",
-    "typescript": "^5.9.3",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "description": "Predictive physics engine with SharedArrayBuffer and Sweep and Prune collision detection",
