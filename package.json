@@ -29,5 +29,10 @@
   },
   "dependencies": {
     "three-stdlib": "^2.36.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript": "5.9.3"
+    }
   }
 }
