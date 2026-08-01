@@ -15,10 +15,6 @@ import { LoadingFallback } from './LoadingFallback';
 import { PostProcessingEffect } from './VibePostProcessing';
 
 
-// @ts-ignore
-import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
-// @ts-ignore
-import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { 
   Environment, 
   ContactShadows,
@@ -198,9 +194,6 @@ export function VibeCanvas({
         dpr={mergedConfig.performance.dpr ?? [1, 2]}
         gl={(defaultProps: any) => {
           const canvas = defaultProps?.canvas as HTMLCanvasElement | OffscreenCanvas | undefined;
-          if (useWebGPU) {
-            return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
-          }
           return new THREE.WebGLRenderer({ canvas: canvas as HTMLCanvasElement, antialias: true, alpha: true, preserveDrawingBuffer: true });
         }}
       >

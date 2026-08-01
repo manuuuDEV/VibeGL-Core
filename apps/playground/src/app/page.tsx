@@ -1,3 +1,4 @@
+"use client";
 import { ControlPanel } from "@/components/ControlPanel";
 import { NaturalLanguageInput } from "@/components/NaturalLanguageInput";
 import dynamic from 'next/dynamic';
