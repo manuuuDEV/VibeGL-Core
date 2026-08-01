@@ -1,0 +1,6 @@
+{
+  "**/*.{js,ts,tsx,jsx}": [
+    "pnpm lint",
+    "git add"
+  ]
+}

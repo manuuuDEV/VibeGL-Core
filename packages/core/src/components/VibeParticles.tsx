@@ -2,8 +2,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-// @ts-ignore
-import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { VibeConfig } from '../types';
 
 export /** Particle system using WebGPU Compute Shaders / TSL */
@@ -12,37 +10,16 @@ function VibeParticles({ config, isWebGPU }: { config: Required<VibeConfig>['par
   const ref = useRef<THREE.Points>(null);
   
   const [material] = useState(() => {
-    if (isWebGPU && (Nodes as any).PointsNodeMaterial) {
-      const mat = new (Nodes as any).PointsNodeMaterial({
-        size: 0.1,
-        transparent: true,
-        opacity: 0.8,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      // Set color based on config using nodes
-      let colorNode;
-      switch (color) {
-        case 'neon': colorNode = (Nodes as any).color(0x00ffff); break;
-        case 'fire': colorNode = (Nodes as any).color(0xff4400); break;
-        case 'water': colorNode = (Nodes as any).color(0x00aaff); break;
-        case 'galaxy': colorNode = (Nodes as any).color(0xaa00ff); break;
-        default: colorNode = (Nodes as any).color(0xffffff);
-      }
-      mat.colorNode = colorNode;
-      return mat;
-    } else {
-      // CPU Fallback Material
-      return new THREE.PointsMaterial({ 
-        size: 0.1, 
-        transparent: true, 
-        opacity: 0.8,
-        vertexColors: true,
-        sizeAttenuation: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-    }
+    // Use CPU fallback material for broad compatibility in builds and environments
+    return new THREE.PointsMaterial({ 
+      size: 0.1, 
+      transparent: true, 
+      opacity: 0.8,
+      vertexColors: true,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
   });
 
   const [geometry] = useState(() => new THREE.BufferGeometry());

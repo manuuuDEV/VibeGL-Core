@@ -5,7 +5,7 @@ import React, {
   useMemo, 
   useState
 } from 'react';
-import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeAPI } from '../hooks/useVibeAPI';
 import { usePhysicsEngine } from '../hooks/usePhysicsEngine';
@@ -15,10 +15,6 @@ import { LoadingFallback } from './LoadingFallback';
 import { PostProcessingEffect } from './VibePostProcessing';
 
 
-// @ts-ignore
-import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js';
-// @ts-ignore
-import * as Nodes from 'three/examples/jsm/nodes/Nodes.js';
 import { 
   Environment, 
   ContactShadows,
@@ -32,7 +28,6 @@ import { VibeConfig } from '../types';
 import { VibeParticles } from './VibeParticles';
 import { deepMerge } from '../utils/configMerge';
 
-extend(THREE);
 
 // ============================================
 // TYPES - VIBE CODER API
@@ -197,11 +192,9 @@ export function VibeCanvas({
         camera={cameraSettings}
         shadows={lighting.shadows}
         dpr={mergedConfig.performance.dpr ?? [1, 2]}
-        gl={(canvas) => {
-          if (useWebGPU) {
-            return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
-          }
-          return new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+        gl={(defaultProps: any) => {
+          const canvas = defaultProps?.canvas as HTMLCanvasElement | OffscreenCanvas | undefined;
+          return new THREE.WebGLRenderer({ canvas: canvas as HTMLCanvasElement, antialias: true, alpha: true, preserveDrawingBuffer: true });
         }}
       >
                 <VibeCanvasAPIHelper refs={threeRefs} />

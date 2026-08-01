@@ -42,11 +42,11 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@react-three/drei": "^9.122.0",
-    "@react-three/fiber": "^8.18.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.7.0",
     "@vibe-gl/math-utils": "workspace:*",
-    "react": "^18.3.1",
-    "three": "^0.160.1"
+    "react": "^19.2.8",
+    "three": "^0.185.1"
   },
   "peerDependencies": {
     "@react-three/fiber": ">=8.0.0",
@@ -58,12 +58,12 @@
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/three": "^0.160.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/three": "^0.185.3",
     "jsdom": "^30.0.1",
-    "tsup": "^8.0.2",
-    "typescript": "^5.9.3",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "description": "React components for declarative 3D scenes with integrated physics",
