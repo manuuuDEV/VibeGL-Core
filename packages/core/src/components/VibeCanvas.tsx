@@ -32,7 +32,6 @@ import { VibeConfig } from '../types';
 import { VibeParticles } from './VibeParticles';
 import { deepMerge } from '../utils/configMerge';
 
-extend(THREE);
 
 // ============================================
 // TYPES - VIBE CODER API
@@ -197,11 +196,11 @@ export function VibeCanvas({
         camera={cameraSettings}
         shadows={lighting.shadows}
         dpr={mergedConfig.performance.dpr ?? [1, 2]}
-        gl={(canvas) => {
+        gl={(canvas: HTMLCanvasElement | OffscreenCanvas | undefined) => {
           if (useWebGPU) {
             return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
           }
-          return new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+          return new THREE.WebGLRenderer({ canvas: canvas as HTMLCanvasElement, antialias: true, alpha: true, preserveDrawingBuffer: true });
         }}
       >
                 <VibeCanvasAPIHelper refs={threeRefs} />
