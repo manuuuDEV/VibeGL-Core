@@ -16,3 +16,7 @@ build/
 # Temp files
 scratch/
 *.txt
+
+# Ignore release artifacts
+*.tar.gz
+*.zip
