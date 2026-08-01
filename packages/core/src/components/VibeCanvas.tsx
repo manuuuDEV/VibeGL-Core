@@ -5,7 +5,7 @@ import React, {
   useMemo, 
   useState
 } from 'react';
-import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useVibeAPI } from '../hooks/useVibeAPI';
 import { usePhysicsEngine } from '../hooks/usePhysicsEngine';
@@ -196,7 +196,8 @@ export function VibeCanvas({
         camera={cameraSettings}
         shadows={lighting.shadows}
         dpr={mergedConfig.performance.dpr ?? [1, 2]}
-        gl={(canvas: HTMLCanvasElement | OffscreenCanvas | undefined) => {
+        gl={(defaultProps: any) => {
+          const canvas = defaultProps?.canvas as HTMLCanvasElement | OffscreenCanvas | undefined;
           if (useWebGPU) {
             return new (WebGPURenderer as any)({ canvas, antialias: true, alpha: true });
           }
