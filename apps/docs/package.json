@@ -7,7 +7,7 @@
     "build": "next build",
     "export": "next export",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -25,6 +25,8 @@
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "eslint": "^8.44.0",
+    "eslint-config-next": "^16.2.12"
   }
 }
