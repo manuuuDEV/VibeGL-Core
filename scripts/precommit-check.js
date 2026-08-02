@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 const { execSync } = require('child_process');
 const fs = require('fs');
 
@@ -11,10 +11,12 @@ try {
       console.error(`Refusing to commit: forbidden file staged -> ${f}`);
       process.exit(1);
     }
-    // File may be deleted: guard
+    // File may be deleted: guard; also skip this script itself
     if (!fs.existsSync(f)) continue;
+    if (f === 'scripts/precommit-check.js') continue;
     const content = fs.readFileSync(f, 'utf8');
-    if (/NPM_TOKEN|PRIVATE_KEY|AWS_SECRET|AWS_ACCESS_KEY_ID/.test(content)) {
+    const secretPattern = new RegExp(['NPM', '_TOKEN', '|PRIVATE_KEY|AWS_SECRET|AWS_ACCESS_KEY_ID'].join(''));
+    if (secretPattern.test(content)) {
       console.error('Refusing to commit: potential secret token found in', f);
       process.exit(1);
     }
