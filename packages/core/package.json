@@ -64,7 +64,7 @@
     "jsdom": "^30.0.1",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "description": "React components for declarative 3D scenes with integrated physics",
   "author": "manuuudev",
